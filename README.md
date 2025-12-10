@@ -20,61 +20,54 @@ Sosyal medya platformları (Instagram, TikTok, YouTube Shorts) için video optim
 - **Linux** (Ubuntu/Debian önerilir)
 - **Python 3.8+**
 - **Bash shell**
+- **İnternet bağlantısı** (kütüphane indirmek için)
 
-### Gerekli Araçlar
+### Gerekli Araçlar - Adım Adım Kurulum
+
+**💡 İpucu:** Eğer Linux kullanmaya yeni başladıysanız, aşağıdaki komutları sırayla terminalde çalıştırın.
+
+#### 1. Sistem Paketlerini Güncelle
 
 ```bash
-# FFmpeg (video işleme)
 sudo apt update
+```
+*Bu komut sistem paket listesini günceller. Şifre isteyebilir.*
+
+#### 2. FFmpeg Kurulumu (Video İşleme İçin - ZORUNLU)
+
+```bash
 sudo apt install ffmpeg
+```
+*FFmpeg video dosyalarını işlemek için gereklidir. Kurulum sırasında "Y" (Evet) yazıp Enter'a basın.*
 
-# ExifTool (opsiyonel - metadata için)
+#### 3. Python ve Gerekli Paketler (ZORUNLU)
+
+```bash
+sudo apt install python3 python3-pip python3-venv python3-all
+```
+*Bu komut Python3 ve tüm gerekli bileşenleri yükler:*
+- `python3`: Python programlama dili
+- `python3-pip`: Python paket yöneticisi
+- `python3-venv`: Virtual environment oluşturma aracı
+- `python3-all`: Tüm Python geliştirme araçları (önerilir)
+
+#### 4. ExifTool Kurulumu (Metadata İçin - OPSİYONEL)
+
+```bash
 sudo apt install libimage-exiftool-perl
+```
+*Bu araç video metadata'sını okumak/yazmak için kullanılır. Opsiyonel ama önerilir.*
 
-# Python3 ve venv desteği
-sudo apt install python3 python3-venv python3-full
+#### 5. mp4dump Kurulumu (FastStart Kontrolü İçin - OPSİYONEL)
 
-# mp4dump (opsiyonel - FastStart kontrolü için)
-# GPAC paketinden gelir
+```bash
 sudo apt install gpac
 ```
+*Bu araç FastStart optimizasyonunun doğru uygulanıp uygulanmadığını kontrol eder. Opsiyonel ama önerilir.*
 
-## 🚀 Kurulum
+#### Kurulum Kontrolü
 
-### 1. Repository'yi İndirin
-
-```bash
-git clone <repository-url>
-cd Script
-```
-
-VEYA dosyaları manuel olarak indirip bir klasöre koyun.
-
-### 2. Script'i Çalıştırılabilir Yapın
-
-```bash
-chmod +x kirwem.sh
-chmod +x ai_thumbnail.py
-```
-
-### 3. AI Thumbnail için Virtual Environment Kurulumu
-
-**⚠️ ÖNEMLİ:** AI thumbnail özelliği için Python kütüphaneleri gereklidir.
-
-```bash
-# Virtual environment oluştur
-python3 -m venv venv_ai_thumb
-
-# Virtual environment'ı aktif et
-source venv_ai_thumb/bin/activate
-
-# Gerekli kütüphaneleri yükle
-pip install torch torchvision pillow clip-anytorch tqdm
-```
-
-**Not:** Kurulum birkaç dakika sürebilir (torch büyük bir pakettir).
-
-### 4. Kurulumu Doğrulayın
+Tüm araçların yüklü olduğunu kontrol edin:
 
 ```bash
 # FFmpeg kontrolü
@@ -83,9 +76,116 @@ ffmpeg -version
 # Python kontrolü
 python3 --version
 
-# Virtual environment kontrolü (aktifken)
+# Pip kontrolü
+pip3 --version
+```
+
+Her komut bir versiyon numarası göstermelidir. Eğer "command not found" hatası alırsanız, yukarıdaki kurulum adımlarını tekrar edin.
+
+## 🚀 Kurulum - Başlangıçtan İtibaren
+
+### 1. Repository'yi İndirin
+
+**Git kullanıyorsanız:**
+```bash
+git clone https://github.com/blu7ck/video-optimizer.git
+cd video-optimizer
+```
+
+**Git kullanmıyorsanız:**
+1. GitHub sayfasından "Code" butonuna tıklayın
+2. "Download ZIP" seçeneğini seçin
+3. İndirilen ZIP dosyasını açın
+4. Terminal'de klasöre gidin:
+   ```bash
+   cd ~/Downloads/video-optimizer-main
+   ```
+
+### 2. Script'i Çalıştırılabilir Yapın
+
+Terminal'de şu komutları çalıştırın:
+
+```bash
+chmod +x kirwem.sh
+chmod +x ai_thumbnail.py
+```
+
+**Ne yapar?** Bu komutlar script dosyalarına çalıştırma izni verir. "Permission denied" hatası almamak için gereklidir.
+
+### 3. AI Thumbnail için Virtual Environment Kurulumu
+
+**⚠️ ÖNEMLİ:** AI thumbnail özelliği için Python kütüphaneleri gereklidir. Bu adımı atlarsanız, script çalışır ama AI thumbnail özelliği kullanılamaz (ilk frame kullanılır).
+
+#### Adım 3.1: Virtual Environment Oluştur
+
+```bash
+python3 -m venv venv_ai_thumb
+```
+
+**Ne yapar?** Bu komut `venv_ai_thumb` adında izole bir Python ortamı oluşturur. Bu sayede sistem Python'unuza dokunmadan kütüphaneleri yükleyebilirsiniz.
+
+**Hata alırsanız:** `python3-all` paketini yüklediğinizden emin olun:
+```bash
+sudo apt install python3-all
+```
+
+#### Adım 3.2: Virtual Environment'ı Aktif Et
+
+```bash
+source venv_ai_thumb/bin/activate
+```
+
+**Ne yapar?** Virtual environment'ı aktif eder. Başarılı olduğunda terminal başında `(venv_ai_thumb)` yazısı görünür.
+
+**💡 İpucu:** Her yeni terminal açtığınızda bu komutu tekrar çalıştırmanız gerekir. Script otomatik olarak algılar, ama manuel kullanım için gereklidir.
+
+#### Adım 3.3: Gerekli Kütüphaneleri Yükle
+
+```bash
+pip install torch torchvision pillow clip-anytorch tqdm
+```
+
+**Ne yapar?** AI thumbnail için gerekli Python kütüphanelerini yükler:
+- `torch`: PyTorch (AI modeli için)
+- `torchvision`: Görüntü işleme
+- `pillow`: Resim işleme
+- `clip-anytorch`: CLIP modeli (AI thumbnail seçimi için)
+- `tqdm`: İlerleme çubuğu
+
+**⏱️ Süre:** Bu işlem 5-15 dakika sürebilir (torch büyük bir pakettir, ~2GB). İnternet hızınıza bağlıdır.
+
+**Hata alırsanız:**
+- İnternet bağlantınızı kontrol edin
+- Virtual environment'ın aktif olduğundan emin olun (`(venv_ai_thumb)` görünmeli)
+- `pip` yerine `pip3` deneyin
+
+#### Adım 3.4: Kurulumu Doğrulayın
+
+```bash
 python3 -c "import clip_anytorch; print('✅ CLIP yüklü')"
 ```
+
+**Ne yapar?** CLIP kütüphanesinin başarıyla yüklendiğini kontrol eder.
+
+**Başarılı olursa:** `✅ CLIP yüklü` yazısı görünür.
+
+**Hata alırsanız:** Adım 3.3'ü tekrar edin.
+
+### 4. Tüm Kurulumu Kontrol Edin
+
+```bash
+# FFmpeg kontrolü
+ffmpeg -version
+
+# Python kontrolü
+python3 --version
+
+# Virtual environment aktif mi? (Terminal başında (venv_ai_thumb) görünmeli)
+# Eğer görünmüyorsa:
+source venv_ai_thumb/bin/activate
+```
+
+**Tüm kontroller başarılıysa:** Artık script'i kullanmaya hazırsınız! 🎉
 
 ## 📖 Kullanım
 
@@ -168,9 +268,19 @@ python3 ai_thumbnail.py video.mp4 output_thumb.jpg
 Bu hata, sistem Python ortamının korunması nedeniyle oluşur. **Mutlaka virtual environment kullanın:**
 
 ```bash
+# Virtual environment oluştur
 python3 -m venv venv_ai_thumb
-source venv_ai_ai_thumb/bin/activate
-pip install ...
+
+# Aktif et (terminal başında (venv_ai_thumb) görünmeli)
+source venv_ai_thumb/bin/activate
+
+# Şimdi pip install çalışacak
+pip install torch torchvision pillow clip-anytorch tqdm
+```
+
+**💡 İpucu:** Eğer `python3-all` yüklü değilse bu hatayı alabilirsiniz:
+```bash
+sudo apt install python3-all
 ```
 
 ### "CLIP kütüphanesi bulunamadı" Hatası
@@ -184,22 +294,43 @@ pip install clip-anytorch torch torchvision pillow tqdm
 
 ### "ffmpeg: command not found"
 
-FFmpeg yüklü değil:
+FFmpeg yüklü değil. Şu komutları çalıştırın:
 
 ```bash
 sudo apt update
 sudo apt install ffmpeg
 ```
 
+Kurulumdan sonra kontrol edin:
+```bash
+ffmpeg -version
+```
+
+Bir versiyon numarası görünmelidir.
+
 ### AI Thumbnail Çalışmıyor
 
-1. Virtual environment aktif mi kontrol edin
-2. Kütüphaneler yüklü mü kontrol edin:
+1. **Virtual environment aktif mi kontrol edin:**
    ```bash
    source venv_ai_thumb/bin/activate
-   python3 -c "import clip_anytorch; print('OK')"
    ```
-3. Script otomatik olarak ilk frame'e geçer (hata durumunda)
+   Terminal başında `(venv_ai_thumb)` görünmeli.
+
+2. **Kütüphaneler yüklü mü kontrol edin:**
+   ```bash
+   python3 -c "import clip_anytorch; print('✅ CLIP yüklü')"
+   ```
+   Eğer hata alırsanız:
+   ```bash
+   pip install torch torchvision pillow clip-anytorch tqdm
+   ```
+
+3. **Script otomatik olarak ilk frame'e geçer** (hata durumunda). Bu normaldir, script çalışmaya devam eder.
+
+4. **python3-all yüklü mü kontrol edin:**
+   ```bash
+   sudo apt install python3-all
+   ```
 
 ## 📝 Örnek Kullanım Senaryosu
 

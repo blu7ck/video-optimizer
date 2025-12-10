@@ -257,5 +257,5 @@ Sorun yaşarsanız:
 ---
 
 **Versiyon:** 2.0  
-**Son Güncelleme:** 2024
+**Son Güncelleme:** 2025/12
 

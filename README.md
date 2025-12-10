@@ -1,4 +1,340 @@
-# 🎬 ULTRA Sosyal Medya Video Optimize Script v2.0
+# 🎬 ULTRA Social Media Video Optimize Script v2.0
+
+[🇬🇧 English](#english) | [🇹🇷 Türkçe](#türkçe)
+
+---
+
+<a name="english"></a>
+## 🇬🇧 English
+
+### Overview
+
+Video optimization script for social media platforms (Instagram, TikTok, YouTube Shorts). Includes metadata injection, FastStart optimization, AI-powered thumbnail selection, and platform-specific bitrate settings.
+
+### ✨ Features
+
+- 📱 **Device Profile Injection**: Meta AI, iPhone, Samsung device profiles
+- 🚀 **FastStart Optimization**: MOOV atom optimization for fast loading
+- 🎯 **Platform Optimization**: Instagram (12Mbps), TikTok (8Mbps), YouTube Shorts (16Mbps)
+- 🤖 **AI Thumbnail**: CLIP model for automatic best frame selection
+- 📊 **Quality Score**: 0-100 quality assessment for each video
+- ✅ **Metadata Verification**: Individual metadata validation for each video
+- 📈 **Detailed Reports**: Post-processing batch reports
+- 📁 **Organized Output**: Automatic separation into Meta and Social folders
+
+### 📋 Requirements
+
+#### System Requirements
+
+- **Linux** (Ubuntu/Debian recommended)
+- **Python 3.8+**
+- **Bash shell**
+- **Internet connection** (for downloading libraries)
+
+#### Required Tools - Step by Step Installation
+
+**💡 Tip:** If you're new to Linux, run these commands sequentially in the terminal.
+
+##### 1. Update System Packages
+
+```bash
+sudo apt update
+```
+*This command updates the system package list. It may ask for your password.*
+
+##### 2. Install FFmpeg (Required for Video Processing)
+
+```bash
+sudo apt install ffmpeg
+```
+*FFmpeg is required for processing video files. Type "Y" (Yes) and press Enter during installation.*
+
+##### 3. Install Python and Required Packages (Required)
+
+```bash
+sudo apt install python3 python3-pip python3-venv python3-all
+```
+*This command installs Python3 and all necessary components:*
+- `python3`: Python programming language
+- `python3-pip`: Python package manager
+- `python3-venv`: Virtual environment creation tool
+- `python3-all`: All Python development tools (recommended)
+
+##### 4. Install ExifTool (Optional - for Metadata)
+
+```bash
+sudo apt install libimage-exiftool-perl
+```
+*This tool is used to read/write video metadata. Optional but recommended.*
+
+##### 5. Install mp4dump (Optional - for FastStart Check)
+
+```bash
+sudo apt install gpac
+```
+*This tool checks if FastStart optimization is correctly applied. Optional but recommended.*
+
+#### Installation Verification
+
+Verify all tools are installed:
+
+```bash
+# Check FFmpeg
+ffmpeg -version
+
+# Check Python
+python3 --version
+
+# Check Pip
+pip3 --version
+```
+
+Each command should display a version number. If you get "command not found" errors, repeat the installation steps above.
+
+### 🚀 Installation - From Scratch
+
+#### 1. Download Repository
+
+**If using Git:**
+```bash
+git clone https://github.com/blu7ck/video-optimizer.git
+cd video-optimizer
+```
+
+**If not using Git:**
+1. Click "Code" button on GitHub page
+2. Select "Download ZIP"
+3. Extract the downloaded ZIP file
+4. Navigate to the folder in terminal:
+   ```bash
+   cd ~/Downloads/video-optimizer-main
+   ```
+
+#### 2. Make Scripts Executable
+
+Run these commands in terminal:
+
+```bash
+chmod +x kirwem.sh
+chmod +x ai_thumbnail.py
+```
+
+**What does this do?** These commands give execution permission to script files. Required to avoid "Permission denied" errors.
+
+#### 3. Virtual Environment Setup for AI Thumbnail
+
+**⚠️ IMPORTANT:** Python libraries are required for AI thumbnail feature. If you skip this step, the script will work but AI thumbnail feature won't be available (first frame will be used).
+
+##### Step 3.1: Create Virtual Environment
+
+```bash
+python3 -m venv venv_ai_thumb
+```
+
+**What does this do?** This command creates an isolated Python environment named `venv_ai_thumb`. This allows you to install libraries without affecting your system Python.
+
+**If you get an error:** Make sure `python3-all` package is installed:
+```bash
+sudo apt install python3-all
+```
+
+##### Step 3.2: Activate Virtual Environment
+
+```bash
+source venv_ai_thumb/bin/activate
+```
+
+**What does this do?** Activates the virtual environment. When successful, you'll see `(venv_ai_thumb)` at the beginning of your terminal prompt.
+
+**💡 Tip:** You need to run this command again each time you open a new terminal. The script automatically detects it, but it's required for manual usage.
+
+##### Step 3.3: Install Required Libraries
+
+```bash
+pip install torch torchvision pillow clip-anytorch tqdm
+```
+
+**What does this do?** Installs Python libraries required for AI thumbnail:
+- `torch`: PyTorch (for AI model)
+- `torchvision`: Image processing
+- `pillow`: Image handling
+- `clip-anytorch`: CLIP model (for AI thumbnail selection)
+- `tqdm`: Progress bar
+
+**⏱️ Duration:** This process may take 5-15 minutes (torch is a large package, ~2GB). Depends on your internet speed.
+
+**If you get errors:**
+- Check your internet connection
+- Make sure virtual environment is active (`(venv_ai_thumb)` should be visible)
+- Try `pip3` instead of `pip`
+
+##### Step 3.4: Verify Installation
+
+```bash
+python3 -c "import clip_anytorch; print('✅ CLIP installed')"
+```
+
+**What does this do?** Checks if CLIP library is successfully installed.
+
+**If successful:** You'll see `✅ CLIP installed`.
+
+**If you get an error:** Repeat Step 3.3.
+
+#### 4. Verify All Installation
+
+```bash
+# Check FFmpeg
+ffmpeg -version
+
+# Check Python
+python3 --version
+
+# Is virtual environment active? (Should see (venv_ai_thumb) at terminal start)
+# If not visible:
+source venv_ai_thumb/bin/activate
+```
+
+**If all checks pass:** You're ready to use the script! 🎉
+
+### 📖 Usage
+
+#### Basic Usage
+
+1. **Place your videos in the script's folder**
+
+2. **Run the script:**
+   ```bash
+   ./kirwem.sh
+   ```
+
+3. **Follow the prompts:**
+   - Select device profile (1-4)
+   - Select platform (Instagram/TikTok/YouTube Shorts)
+   - Select video (All or single)
+   - Optional settings:
+     - ExifTool metadata
+     - Social media optimization
+     - Thumbnail (AI or first frame)
+
+#### Folder Structure
+
+After script execution:
+
+```
+Script/
+├── kirwem.sh
+├── ai_thumbnail.py
+├── video1.mp4          # Original videos
+├── video2.mp4
+├── meta/               # Videos with metadata added
+│   ├── video1_meta.mp4
+│   └── video2_meta.mp4
+├── social/             # Optimized videos for social media
+│   ├── video1_social.mp4
+│   └── video2_social.mp4
+└── logs/               # Log and report files
+    ├── optimize_YYYYMMDD_HHMMSS.log
+    └── report_YYYYMMDD_HHMMSS.txt
+```
+
+### 🎯 Platform Bitrate Settings
+
+- **Instagram**: 12 Mbps
+- **TikTok**: 8 Mbps  
+- **YouTube Shorts**: 16 Mbps
+
+### 📊 Output Files
+
+#### Meta Folder
+- Videos with metadata added
+- FastStart optimization applied
+- Original quality
+
+#### Social Folder
+- Platform-based bitrate optimization
+- Optimized for social media
+- Smaller file size
+
+#### Logs Folder
+- Process logs
+- Detailed reports
+- Metadata test results
+
+### 🔧 Troubleshooting
+
+#### "externally-managed-environment" Error
+
+This error occurs due to system Python environment protection. **You must use virtual environment:**
+
+```bash
+# Create virtual environment
+python3 -m venv venv_ai_thumb
+
+# Activate (should see (venv_ai_thumb) at terminal start)
+source venv_ai_thumb/bin/activate
+
+# Now pip install will work
+pip install torch torchvision pillow clip-anytorch tqdm
+```
+
+**💡 Tip:** If `python3-all` is not installed, you may get this error:
+```bash
+sudo apt install python3-all
+```
+
+#### "CLIP library not found" Error
+
+Activate virtual environment and install libraries:
+
+```bash
+source venv_ai_thumb/bin/activate
+pip install clip-anytorch torch torchvision pillow tqdm
+```
+
+#### "ffmpeg: command not found"
+
+FFmpeg is not installed. Run these commands:
+
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
+
+After installation, verify:
+```bash
+ffmpeg -version
+```
+
+You should see a version number.
+
+#### AI Thumbnail Not Working
+
+1. **Check if virtual environment is active:**
+   ```bash
+   source venv_ai_thumb/bin/activate
+   ```
+   Should see `(venv_ai_thumb)` at terminal start.
+
+2. **Check if libraries are installed:**
+   ```bash
+   python3 -c "import clip_anytorch; print('✅ CLIP installed')"
+   ```
+   If you get an error:
+   ```bash
+   pip install torch torchvision pillow clip-anytorch tqdm
+   ```
+
+3. **Script automatically falls back to first frame** (on error). This is normal, script continues working.
+
+4. **Check if python3-all is installed:**
+   ```bash
+   sudo apt install python3-all
+   ```
+
+---
+
+<a name="türkçe"></a>
+## 🇹🇷 Türkçe
 
 Sosyal medya platformları (Instagram, TikTok, YouTube Shorts) için video optimizasyon scripti. Metadata ekleme, FastStart optimizasyonu, AI destekli thumbnail seçimi ve platform bazlı bitrate ayarları içerir.
 

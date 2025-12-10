@@ -1,0 +1,47 @@
+# Virtual Environment
+venv_ai_thumb/
+venv/
+env/
+.venv/
+
+# Output klasörleri
+meta/
+social/
+output/
+logs/
+temp_frames/
+
+# Geçici dosyalar
+temp_*.mp4
+*.tmp
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Video dosyaları (kullanıcı kendi videolarını ekleyecek)
+*.mp4
+*.mov
+*.avi
+*.mkv
+!example_video.mp4
+
+# Thumbnail dosyaları
+*_thumb.jpg
+*_thumb.png
+

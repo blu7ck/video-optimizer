@@ -202,111 +202,7 @@ check_faststart() {
     fi
 }
 
-# 1) CİHAZ PROFİLİ SEÇİMİ
-echo
-echo "=== Cihaz Profilini Seçin ==="
-echo "1) Meta AI - Ray-Ban Meta Smart Glasses"
-echo "2) iPhone 16 Pro Max"
-echo "3) Samsung S25 Ultra"
-echo "4) Manuel gir"
-
-read -p "Seçiminiz (1-4): " DEV
-
-case $DEV in
-    1)
-        MAKE="Meta AI"
-        MODEL="Ray-Ban Meta Smart Glasses"
-        SOFTWARE="Instagram"
-        ;;
-    2)
-        MAKE="Apple"
-        MODEL="iPhone 16 Pro Max"
-        SOFTWARE="Instagram"
-        ;;
-    3)
-        MAKE="Samsung"
-        MODEL="Galaxy S25 Ultra"
-        SOFTWARE="Instagram"
-        ;;
-    4)
-        read -p "Make (Marka): " MAKE
-        read -p "Model: " MODEL
-        read -p "Software: " SOFTWARE
-        ;;
-    *)
-        echo "Geçersiz seçim!"
-        exit 1
-esac
-
-echo
-echo "Profil: $MAKE / $MODEL / $SOFTWARE"
-echo
-
-# 2) BİTRATE SEÇİMİ (Opsiyonel)
-echo "=== Bitrate Seçimi (Sosyal Medya Optimizasyonu İçin) ==="
-echo "1) Platform önerileri kullan"
-echo "2) Manuel bitrate gir"
-echo "3) Bitrate optimizasyonu yapma (atla)"
-
-read -p "Seçiminiz (1-3): " BITRATE_CHOICE
-
-BITRATE=""
-PLATFORM=""
-
-case $BITRATE_CHOICE in
-    1)
-        echo
-        echo "=== Platform Seçin ==="
-        echo "1) Instagram (12Mbps bitrate)"
-        echo "2) TikTok (8Mbps bitrate)"
-        echo "3) YouTube Shorts (16Mbps bitrate)"
-        read -p "Seçiminiz (1-3): " PLATFORM_CHOICE
-        
-        case $PLATFORM_CHOICE in
-            1)
-                PLATFORM="instagram"
-                BITRATE=$(get_platform_bitrate "$PLATFORM")
-                ;;
-            2)
-                PLATFORM="tiktok"
-                BITRATE=$(get_platform_bitrate "$PLATFORM")
-                ;;
-            3)
-                PLATFORM="youtube_shorts"
-                BITRATE=$(get_platform_bitrate "$PLATFORM")
-                ;;
-            *)
-                PLATFORM="instagram"
-                BITRATE="12M"
-                ;;
-        esac
-        echo "Platform: $PLATFORM (Bitrate: $BITRATE)"
-        ;;
-    2)
-        echo
-        read -p "Bitrate değerini girin (örn: 10M, 8M, 12M): " BITRATE
-        # Bitrate formatını kontrol et (M veya K ile bitmeli)
-        if [[ ! "$BITRATE" =~ ^[0-9]+[MK]$ ]]; then
-            echo "⚠️  Geçersiz format! Örnek: 10M veya 8000K"
-            echo "Varsayılan olarak 12M kullanılacak."
-            BITRATE="12M"
-        else
-            echo "Bitrate: $BITRATE"
-        fi
-        ;;
-    3)
-        echo "Bitrate optimizasyonu atlandı."
-        BITRATE=""
-        ;;
-    *)
-        echo "Geçersiz seçim! Bitrate optimizasyonu atlandı."
-        BITRATE=""
-        ;;
-esac
-
-echo
-
-# 3) VİDEO SEÇİMİ (Çoklu dosya işleme)
+# 1) VİDEO SEÇİMİ (İlk adım - Çoklu dosya işleme)
 echo "Bu klasördeki MP4 videolar:"
 ls *.mp4 2>/dev/null
 echo
@@ -326,20 +222,12 @@ else
     VIDEOS=("$ONE")
 fi
 
-# Rapor başlığı
+# Rapor başlığı (profil bilgileri sonra eklenecek)
 {
     echo "========================================================="
     echo "   VIDEO OPTİMİZASYON RAPORU"
     echo "========================================================="
     echo "Tarih: $(date)"
-    echo "Profil: $MAKE / $MODEL / $SOFTWARE"
-    if [ -n "$PLATFORM" ]; then
-        echo "Platform: $PLATFORM (Bitrate: $BITRATE)"
-    elif [ -n "$BITRATE" ]; then
-        echo "Bitrate: $BITRATE (Manuel)"
-    else
-        echo "Bitrate Optimizasyonu: Kapalı"
-    fi
     echo "Toplam Video: ${#VIDEOS[@]}"
     echo "========================================================="
     echo
@@ -529,13 +417,124 @@ for INPUT in "${VIDEOS[@]}"; do
             ;;
     esac
 
-    # [2] Metadata yaz + [3] FastStart (birlikte yapılıyor)
+    # [2] Metadata Yazma (Cihaz profili ve bitrate seçimi burada)
     echo
-    echo "=== [2] Metadata Yazma + [3] FastStart (MOOV Atom Optimize) ==="
-    echo ">>> Metadata yazılıyor ve FastStart uygulanıyor..."
+    echo "=== [2] Metadata Yazma ==="
     
-    # FFmpeg ile metadata yazma (bazı durumlarda -c copy ile metadata yazılamayabilir)
-    # İki yöntem deniyoruz: önce -c copy, sonra ExifTool ile güçlendirme
+    # Cihaz profili seçimi
+    echo
+    echo "=== Cihaz Profilini Seçin ==="
+    echo "1) Meta AI - Ray-Ban Meta Smart Glasses"
+    echo "2) iPhone 16 Pro Max"
+    echo "3) Samsung S25 Ultra"
+    echo "4) Manuel gir"
+    
+    read -p "Seçiminiz (1-4): " DEV
+    
+    case $DEV in
+        1)
+            MAKE="Meta AI"
+            MODEL="Ray-Ban Meta Smart Glasses"
+            SOFTWARE="Instagram"
+            ;;
+        2)
+            MAKE="Apple"
+            MODEL="iPhone 16 Pro Max"
+            SOFTWARE="Instagram"
+            ;;
+        3)
+            MAKE="Samsung"
+            MODEL="Galaxy S25 Ultra"
+            SOFTWARE="Instagram"
+            ;;
+        4)
+            read -p "Make (Marka): " MAKE
+            read -p "Model: " MODEL
+            read -p "Software: " SOFTWARE
+            ;;
+        *)
+            echo "Geçersiz seçim! Varsayılan profil kullanılıyor."
+            MAKE="Apple"
+            MODEL="iPhone 16 Pro Max"
+            SOFTWARE="Instagram"
+            ;;
+    esac
+    
+    echo
+    echo "Profil: $MAKE / $MODEL / $SOFTWARE"
+    echo
+    
+    # Bitrate seçimi (opsiyonel)
+    echo "=== Bitrate Seçimi (Sosyal Medya Optimizasyonu İçin) ==="
+    echo "1) Platform önerileri kullan"
+    echo "2) Manuel bitrate gir"
+    echo "3) Bitrate optimizasyonu yapma (atla)"
+    
+    read -p "Seçiminiz (1-3): " BITRATE_CHOICE
+    
+    BITRATE=""
+    PLATFORM=""
+    
+    case $BITRATE_CHOICE in
+        1)
+            echo
+            echo "=== Platform Seçin ==="
+            echo "1) Instagram (12Mbps bitrate)"
+            echo "2) TikTok (8Mbps bitrate)"
+            echo "3) YouTube Shorts (16Mbps bitrate)"
+            read -p "Seçiminiz (1-3): " PLATFORM_CHOICE
+            
+            case $PLATFORM_CHOICE in
+                1)
+                    PLATFORM="instagram"
+                    BITRATE=$(get_platform_bitrate "$PLATFORM")
+                    ;;
+                2)
+                    PLATFORM="tiktok"
+                    BITRATE=$(get_platform_bitrate "$PLATFORM")
+                    ;;
+                3)
+                    PLATFORM="youtube_shorts"
+                    BITRATE=$(get_platform_bitrate "$PLATFORM")
+                    ;;
+                *)
+                    PLATFORM="instagram"
+                    BITRATE="12M"
+                    ;;
+            esac
+            echo "Platform: $PLATFORM (Bitrate: $BITRATE)"
+            ;;
+        2)
+            echo
+            read -p "Bitrate değerini girin (örn: 10M, 8M, 12M): " BITRATE
+            # Bitrate formatını kontrol et (M veya K ile bitmeli)
+            if [[ ! "$BITRATE" =~ ^[0-9]+[MK]$ ]]; then
+                echo "⚠️  Geçersiz format! Örnek: 10M veya 8000K"
+                echo "Varsayılan olarak 12M kullanılacak."
+                BITRATE="12M"
+            else
+                echo "Bitrate: $BITRATE"
+            fi
+            ;;
+        3)
+            echo "Bitrate optimizasyonu atlandı."
+            BITRATE=""
+            ;;
+        *)
+            echo "Geçersiz seçim! Bitrate optimizasyonu atlandı."
+            BITRATE=""
+            ;;
+    esac
+    
+    echo
+    echo ">>> Metadata yazılıyor..."
+    
+    # [3] FastStart (moov atom başa)
+    echo
+    echo "=== [3] FastStart (MOOV Atom Optimize) ==="
+    echo ">>> FastStart uygulanıyor..."
+    
+    # FFmpeg ile metadata yazma ve FastStart uygulama
     if ffmpeg -i "$CURRENT_FILE" \
     -metadata make="$MAKE" \
     -metadata model="$MODEL" \
@@ -708,36 +707,25 @@ for INPUT in "${VIDEOS[@]}"; do
     echo "=== [5] Bitrate Optimizasyonu ==="
     OPTIMIZED_SCORE=""
     
-    # Eğer başta bitrate optimizasyonu atlandıysa (BITRATE=""), burada tekrar sorma
+    # Eğer metadata adımında bitrate optimizasyonu atlandıysa (BITRATE=""), burada atla
     if [ -z "$BITRATE" ]; then
-        echo "Bitrate optimizasyonu başta atlandı, bu adım atlanıyor."
+        echo "Bitrate optimizasyonu metadata adımında atlandı, bu adım atlanıyor."
         DO_BITRATE="h"
-    else
-        # Bitrate set edildiyse, direkt yap (tekrar sorma)
-        DO_BITRATE="e"
-    fi
-    
-    if [[ "$DO_BITRATE" == "e" || "$DO_BITRATE" == "E" ]]; then
-        if [ -z "$BITRATE" ]; then
-            echo "❌ Bitrate değeri belirtilmedi! Optimizasyon atlandı." | tee -a "$LOGFILE"
-            FINAL_OUT="$META_OUT"
-        else
-            echo ">>> Bitrate optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
-            if ffmpeg -i "$CURRENT_FILE" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
-                echo "✅ BAŞARILI: Bitrate optimizasyonu tamamlandı"
-                echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
-                FINAL_OUT="$OPTIMIZED_OUT"
-                
-                # Optimized dosya için de kalite skoru
-                OPTIMIZED_SCORE=$(calculate_quality_score "$OPTIMIZED_OUT")
-                echo "📊 Optimized Kalite Skoru: $OPTIMIZED_SCORE/100"
-            else
-                echo "❌ BAŞARISIZ: Bitrate optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
-                FINAL_OUT="$META_OUT"
-            fi
-        fi
-    else
         FINAL_OUT="$META_OUT"
+    else
+        # Bitrate set edildiyse, direkt yap
+        if ffmpeg -i "$CURRENT_FILE" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
+            echo "✅ BAŞARILI: Bitrate optimizasyonu tamamlandı"
+            echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
+            FINAL_OUT="$OPTIMIZED_OUT"
+            
+            # Optimized dosya için de kalite skoru
+            OPTIMIZED_SCORE=$(calculate_quality_score "$OPTIMIZED_OUT")
+            echo "📊 Optimized Kalite Skoru: $OPTIMIZED_SCORE/100"
+        else
+            echo "❌ BAŞARISIZ: Bitrate optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
+            FINAL_OUT="$META_OUT"
+        fi
     fi
 
     # [6] Final output

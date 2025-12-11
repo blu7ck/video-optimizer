@@ -533,6 +533,9 @@ for INPUT in "${VIDEOS[@]}"; do
     echo
     echo "=== [2] Metadata Yazma + [3] FastStart (MOOV Atom Optimize) ==="
     echo ">>> Metadata yazılıyor ve FastStart uygulanıyor..."
+    
+    # FFmpeg ile metadata yazma (bazı durumlarda -c copy ile metadata yazılamayabilir)
+    # İki yöntem deniyoruz: önce -c copy, sonra ExifTool ile güçlendirme
     if ffmpeg -i "$CURRENT_FILE" \
     -metadata make="$MAKE" \
     -metadata model="$MODEL" \
@@ -540,19 +543,19 @@ for INPUT in "${VIDEOS[@]}"; do
     -metadata creation_time="$(date -u +%Y-%m-%dT%H:%M:%S)" \
     -movflags faststart \
     -c copy "$META_OUT" -y 2>>"$LOGFILE"; then
-        echo "✅ BAŞARILI: Metadata eklendi ve FastStart uygulandı"
+        echo "✅ BAŞARILI: FastStart uygulandı"
         echo "✅ Meta dosya oluşturuldu: $META_OUT"
         CURRENT_FILE="$META_OUT"
     else
-        echo "❌ BAŞARISIZ: Metadata ve FastStart uygulanamadı!" | tee -a "$LOGFILE"
-        FAILED_VIDEOS+=("$INPUT (Metadata ve FastStart uygulanamadı)")
+        echo "❌ BAŞARISIZ: FastStart uygulanamadı!" | tee -a "$LOGFILE"
+        FAILED_VIDEOS+=("$INPUT (FastStart uygulanamadı)")
         continue
     fi
 
-    # ExifTool (opsiyonel) - FastStart'tan sonra yazılıyor
-    read -p "ExifTool metadata enjekte edilsin mi? (e/h): " USE_EXIF
-    if [[ "$USE_EXIF" == "e" || "$USE_EXIF" == "E" ]]; then
-        echo ">>> ExifTool metadata ekleniyor..."
+    # ExifTool ile metadata güçlendirme (FFmpeg'in -c copy ile yazamadığı metadata'ları yazar)
+    # ExifTool MP4 metadata'yı daha güvenilir şekilde yazar
+    if command -v exiftool &>/dev/null; then
+        echo ">>> ExifTool ile metadata güçlendiriliyor..."
         if exiftool -overwrite_original \
         -Make="$MAKE" \
         -Model="$MODEL" \
@@ -560,8 +563,10 @@ for INPUT in "${VIDEOS[@]}"; do
         "$META_OUT" >>"$LOGFILE" 2>&1; then
             echo "✅ BAŞARILI: ExifTool metadata eklendi"
         else
-            echo "❌ BAŞARISIZ: ExifTool metadata eklenemedi!" | tee -a "$LOGFILE"
+            echo "⚠️  ExifTool metadata eklenemedi (opsiyonel)" | tee -a "$LOGFILE"
         fi
+    else
+        echo "⚠️  ExifTool yüklü değil, metadata sadece FFmpeg ile yazıldı" | tee -a "$LOGFILE"
     fi
 
     # Metadata doğrulama

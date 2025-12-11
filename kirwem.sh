@@ -666,10 +666,11 @@ for INPUT in "${VIDEOS[@]}"; do
             if [ -f "$THUMB_FILE" ]; then
                 EMBED_OUT="${META_OUT%.mp4}_THUMB.mp4"
                 echo ">>> Thumbnail MP4'e embed ediliyor..."
-                # Thumbnail'i attached picture olarak ekle
+                # Thumbnail'i attached picture olarak ekle (FastStart korunuyor)
                 if ffmpeg -i "$META_OUT" -i "$THUMB_FILE" \
                 -map 0:v -map 0:a? -map 1 \
                 -c:v copy -c:a copy -c:s copy \
+                -movflags faststart \
                 -disposition:2 attached_pic \
                 "$EMBED_OUT" -y 2>>"$LOGFILE"; then
                     echo "✅ BAŞARILI: Thumbnail MP4'e eklendi: $EMBED_OUT"
@@ -681,10 +682,11 @@ for INPUT in "${VIDEOS[@]}"; do
                 else
                     echo "❌ BAŞARISIZ: Thumbnail MP4'e eklenemedi!" | tee -a "$LOGFILE"
                     echo "   Alternatif yöntem deneniyor..." | tee -a "$LOGFILE"
-                    # Alternatif: Thumbnail'i video stream olarak ekle
+                    # Alternatif: Thumbnail'i video stream olarak ekle (FastStart korunuyor)
                     if ffmpeg -i "$META_OUT" -i "$THUMB_FILE" \
                     -map 0 -map 1:v \
                     -c:v copy -c:a copy \
+                    -movflags faststart \
                     -disposition:1 attached_pic \
                     "$EMBED_OUT" -y 2>>"$LOGFILE"; then
                         echo "✅ BAŞARILI: Thumbnail alternatif yöntemle eklendi: $EMBED_OUT"
@@ -713,8 +715,8 @@ for INPUT in "${VIDEOS[@]}"; do
         DO_BITRATE="h"
         FINAL_OUT="$META_OUT"
     else
-        # Bitrate set edildiyse, direkt yap
-        if ffmpeg -i "$CURRENT_FILE" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
+        # Bitrate set edildiyse, direkt yap (FastStart korunuyor)
+        if ffmpeg -i "$CURRENT_FILE" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy -movflags faststart "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
             echo "✅ BAŞARILI: Bitrate optimizasyonu tamamlandı"
             echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
             FINAL_OUT="$OPTIMIZED_OUT"

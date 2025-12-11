@@ -241,34 +241,68 @@ echo
 echo "Profil: $MAKE / $MODEL / $SOFTWARE"
 echo
 
-# 2) PLATFORM SEÇİMİ
-echo "=== Platform Seçin ==="
-echo "1) Instagram (12Mbps bitrate)"
-echo "2) TikTok (8Mbps bitrate)"
-echo "3) YouTube Shorts (16Mbps bitrate)"
+# 2) BİTRATE SEÇİMİ (Opsiyonel)
+echo "=== Bitrate Seçimi (Sosyal Medya Optimizasyonu İçin) ==="
+echo "1) Platform önerileri kullan"
+echo "2) Manuel bitrate gir"
+echo "3) Bitrate optimizasyonu yapma (atla)"
 
-read -p "Seçiminiz (1-3): " PLATFORM_CHOICE
+read -p "Seçiminiz (1-3): " BITRATE_CHOICE
 
-case $PLATFORM_CHOICE in
+BITRATE=""
+PLATFORM=""
+
+case $BITRATE_CHOICE in
     1)
-        PLATFORM="instagram"
-        BITRATE=$(get_platform_bitrate "$PLATFORM")
+        echo
+        echo "=== Platform Seçin ==="
+        echo "1) Instagram (12Mbps bitrate)"
+        echo "2) TikTok (8Mbps bitrate)"
+        echo "3) YouTube Shorts (16Mbps bitrate)"
+        read -p "Seçiminiz (1-3): " PLATFORM_CHOICE
+        
+        case $PLATFORM_CHOICE in
+            1)
+                PLATFORM="instagram"
+                BITRATE=$(get_platform_bitrate "$PLATFORM")
+                ;;
+            2)
+                PLATFORM="tiktok"
+                BITRATE=$(get_platform_bitrate "$PLATFORM")
+                ;;
+            3)
+                PLATFORM="youtube_shorts"
+                BITRATE=$(get_platform_bitrate "$PLATFORM")
+                ;;
+            *)
+                PLATFORM="instagram"
+                BITRATE="12M"
+                ;;
+        esac
+        echo "Platform: $PLATFORM (Bitrate: $BITRATE)"
         ;;
     2)
-        PLATFORM="tiktok"
-        BITRATE=$(get_platform_bitrate "$PLATFORM")
+        echo
+        read -p "Bitrate değerini girin (örn: 10M, 8M, 12M): " BITRATE
+        # Bitrate formatını kontrol et (M veya K ile bitmeli)
+        if [[ ! "$BITRATE" =~ ^[0-9]+[MK]$ ]]; then
+            echo "⚠️  Geçersiz format! Örnek: 10M veya 8000K"
+            echo "Varsayılan olarak 12M kullanılacak."
+            BITRATE="12M"
+        else
+            echo "Bitrate: $BITRATE"
+        fi
         ;;
     3)
-        PLATFORM="youtube_shorts"
-        BITRATE=$(get_platform_bitrate "$PLATFORM")
+        echo "Bitrate optimizasyonu atlandı."
+        BITRATE=""
         ;;
     *)
-        PLATFORM="instagram"
-        BITRATE="12M"
+        echo "Geçersiz seçim! Bitrate optimizasyonu atlandı."
+        BITRATE=""
         ;;
 esac
 
-echo "Platform: $PLATFORM (Bitrate: $BITRATE)"
 echo
 
 # 3) VİDEO SEÇİMİ (Çoklu dosya işleme)
@@ -298,7 +332,13 @@ fi
     echo "========================================================="
     echo "Tarih: $(date)"
     echo "Profil: $MAKE / $MODEL / $SOFTWARE"
-    echo "Platform: $PLATFORM (Bitrate: $BITRATE)"
+    if [ -n "$PLATFORM" ]; then
+        echo "Platform: $PLATFORM (Bitrate: $BITRATE)"
+    elif [ -n "$BITRATE" ]; then
+        echo "Bitrate: $BITRATE (Manuel)"
+    else
+        echo "Bitrate Optimizasyonu: Kapalı"
+    fi
     echo "Toplam Video: ${#VIDEOS[@]}"
     echo "========================================================="
     echo
@@ -391,21 +431,47 @@ for INPUT in "${VIDEOS[@]}"; do
 
     # Sosyal medya optimizasyonu
     echo
-    read -p "Sosyal medya için optimize edilsin mi? (e/h): " DO_SOCIAL
+    if [ -n "$BITRATE" ]; then
+        read -p "Sosyal medya için optimize edilsin mi? (Bitrate: $BITRATE) (e/h): " DO_SOCIAL
+    else
+        read -p "Sosyal medya için optimize edilsin mi? (e/h): " DO_SOCIAL
+        if [[ "$DO_SOCIAL" == "e" || "$DO_SOCIAL" == "E" ]]; then
+            echo
+            echo "Bitrate değeri girilmedi. Manuel bitrate girmek ister misiniz?"
+            read -p "Manuel bitrate girin (örn: 10M) veya Enter'a basarak atlayın: " MANUAL_BITRATE
+            if [ -n "$MANUAL_BITRATE" ]; then
+                if [[ "$MANUAL_BITRATE" =~ ^[0-9]+[MK]$ ]]; then
+                    BITRATE="$MANUAL_BITRATE"
+                    echo "Bitrate: $BITRATE"
+                else
+                    echo "⚠️  Geçersiz format! Bitrate optimizasyonu atlandı."
+                    DO_SOCIAL="h"
+                fi
+            else
+                echo "Bitrate optimizasyonu atlandı."
+                DO_SOCIAL="h"
+            fi
+        fi
+    fi
+    
     if [[ "$DO_SOCIAL" == "e" || "$DO_SOCIAL" == "E" ]]; then
-        echo ">>> Sosyal medya optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
-        if ffmpeg -i "$META_OUT" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$SOCIAL_OUT" -y 2>>"$LOGFILE"; then
-            echo "✅ BAŞARILI: Sosyal medya optimizasyonu tamamlandı"
-            echo "✅ Social dosya oluşturuldu: $SOCIAL_OUT"
-            
-            # Social dosya için de kalite skoru
-            SOCIAL_SCORE=$(calculate_quality_score "$SOCIAL_OUT")
-            echo "📊 Social Kalite Skoru: $SOCIAL_SCORE/100"
-            
-            PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$SOCIAL_OUT|$QUALITY_SCORE|$SOCIAL_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
+        if [ -z "$BITRATE" ]; then
+            echo "❌ Bitrate değeri belirtilmedi! Optimizasyon atlandı." | tee -a "$LOGFILE"
         else
-            echo "❌ BAŞARISIZ: Sosyal medya optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
-            PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
+            echo ">>> Sosyal medya optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
+            if ffmpeg -i "$META_OUT" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$SOCIAL_OUT" -y 2>>"$LOGFILE"; then
+                echo "✅ BAŞARILI: Sosyal medya optimizasyonu tamamlandı"
+                echo "✅ Social dosya oluşturuldu: $SOCIAL_OUT"
+                
+                # Social dosya için de kalite skoru
+                SOCIAL_SCORE=$(calculate_quality_score "$SOCIAL_OUT")
+                echo "📊 Social Kalite Skoru: $SOCIAL_SCORE/100"
+                
+                PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$SOCIAL_OUT|$QUALITY_SCORE|$SOCIAL_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
+            else
+                echo "❌ BAŞARISIZ: Sosyal medya optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
+                PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
+            fi
         fi
     else
         PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")

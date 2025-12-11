@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "========================================================="
-echo "   ULTRA Sosyal Medya Video Optimize Script v2.0"
+echo "   ULTRA Sosyal Medya Video Optimize Script v2.1"
 echo "========================================================="
 echo
 

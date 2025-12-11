@@ -1,4 +1,4 @@
-# 🎬 ULTRA Social Media Video Optimize Script v2.0
+# 🎬 ULTRA Social Media Video Optimize Script v2.1
 
 [🇬🇧 English](#english) | [🇹🇷 Türkçe](#türkçe)
 

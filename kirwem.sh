@@ -360,18 +360,179 @@ for INPUT in "${VIDEOS[@]}"; do
 
     BASENAME=$(basename "$INPUT" .mp4)
     TEMP="temp_${BASENAME}.mp4"
-    META_OUT="meta/${BASENAME}_meta.mp4"
+    TEMP2="temp2_${BASENAME}.mp4"
     UPSCALED_OUT="upscaled/${BASENAME}_upscaled.mp4"
+    META_OUT="meta/${BASENAME}_meta.mp4"
     OPTIMIZED_OUT="optimized/${BASENAME}_optimized.mp4"
+    FINAL_OUT=""
 
     echo
     echo "------------------------------------------"
     echo ">>> İşleniyor: $INPUT"
     echo "------------------------------------------"
 
-    # Metadata ekle ve meta klasörüne kaydet
+    # [1] UPSCALE - Tek encode burada
+    echo
+    echo "=== [1] Upscale (Çözünürlük Artırma) ==="
+    echo "1) FFmpeg Upscale (Hızlı, basit)"
+    echo "2) AI Upscale - Real-ESRGAN (Yavaş, yüksek kalite)"
+    echo "3) Upscale yapma (atla)"
+    read -p "Seçiminiz (1-3): " UPSCALE_CHOICE
+
+    CURRENT_FILE="$INPUT"
+    
+    case $UPSCALE_CHOICE in
+        1)
+            # FFmpeg Upscale
+            echo
+            echo "=== FFmpeg Upscale Çözünürlük Seçimi ==="
+            echo "1) 1080p (1920x1080)"
+            echo "2) 1440p (2560x1440)"
+            echo "3) 4K (3840x2160)"
+            echo "4) Özel çözünürlük gir"
+            read -p "Seçiminiz (1-4): " RESOLUTION_CHOICE
+            
+            case $RESOLUTION_CHOICE in
+                1)
+                    TARGET_RES="1920:1080"
+                    ;;
+                2)
+                    TARGET_RES="2560:1440"
+                    ;;
+                3)
+                    TARGET_RES="3840:2160"
+                    ;;
+                4)
+                    read -p "Genişlik: " WIDTH
+                    read -p "Yükseklik: " HEIGHT
+                    TARGET_RES="${WIDTH}:${HEIGHT}"
+                    ;;
+                *)
+                    echo "Geçersiz seçim, 1080p kullanılıyor."
+                    TARGET_RES="1920:1080"
+                    ;;
+            esac
+            
+            echo ">>> FFmpeg ile upscale yapılıyor ($TARGET_RES)..."
+            if ffmpeg -i "$CURRENT_FILE" \
+            -vf "scale=$TARGET_RES:flags=lanczos" \
+            -c:v libx264 -preset medium -crf 18 \
+            -c:a copy \
+            "$UPSCALED_OUT" -y 2>>"$LOGFILE"; then
+                echo "✅ BAŞARILI: FFmpeg upscale tamamlandı: $UPSCALED_OUT"
+                CURRENT_FILE="$UPSCALED_OUT"
+            else
+                echo "❌ BAŞARISIZ: FFmpeg upscale yapılamadı!" | tee -a "$LOGFILE"
+                echo "Orijinal dosya kullanılmaya devam edilecek."
+            fi
+            ;;
+        2)
+            # AI Upscale (Real-ESRGAN)
+            echo
+            echo ">>> AI Upscale (Real-ESRGAN) kontrol ediliyor..."
+            
+            # Real-ESRGAN kontrolü
+            if command -v realesrgan-ncnn-vulkan &>/dev/null || command -v realesrgan &>/dev/null; then
+                echo "Real-ESRGAN bulundu."
+                echo
+                echo "=== AI Upscale Model Seçimi ==="
+                echo "1) realesrgan-x4plus (4x upscale, önerilen)"
+                echo "2) realesrgan-x4plus-anime (Anime için)"
+                echo "3) realesrgan-x2plus (2x upscale, hızlı)"
+                read -p "Seçiminiz (1-3): " MODEL_CHOICE
+                
+                case $MODEL_CHOICE in
+                    1)
+                        MODEL_NAME="realesrgan-x4plus"
+                        SCALE=4
+                        ;;
+                    2)
+                        MODEL_NAME="realesrgan-x4plus-anime"
+                        SCALE=4
+                        ;;
+                    3)
+                        MODEL_NAME="realesrgan-x2plus"
+                        SCALE=2
+                        ;;
+                    *)
+                        MODEL_NAME="realesrgan-x4plus"
+                        SCALE=4
+                        ;;
+                esac
+                
+                echo ">>> AI Upscale yapılıyor (Model: $MODEL_NAME)..."
+                echo "⚠️  Bu işlem uzun sürebilir (video uzunluğuna bağlı)..."
+                
+                # Real-ESRGAN video işleme için frame'leri çıkar, upscale et, birleştir
+                TEMP_FRAMES="temp_frames_${BASENAME}"
+                TEMP_UPSCALED_FRAMES="temp_upscaled_frames_${BASENAME}"
+                mkdir -p "$TEMP_FRAMES"
+                mkdir -p "$TEMP_UPSCALED_FRAMES"
+                
+                # Video'dan frame'leri çıkar
+                echo ">>> Frame'ler çıkarılıyor..."
+                if ffmpeg -i "$CURRENT_FILE" -qscale:v 1 "$TEMP_FRAMES/frame_%06d.jpg" -y 2>>"$LOGFILE"; then
+                    # Her frame'i upscale et
+                    echo ">>> Frame'ler upscale ediliyor (bu uzun sürebilir)..."
+                    FRAME_COUNT=$(ls -1 "$TEMP_FRAMES"/*.jpg 2>/dev/null | wc -l)
+                    CURRENT_FRAME=0
+                    
+                    for frame in "$TEMP_FRAMES"/*.jpg; do
+                        if [ -f "$frame" ]; then
+                            CURRENT_FRAME=$((CURRENT_FRAME + 1))
+                            FRAME_NAME=$(basename "$frame")
+                            echo ">>> İşleniyor: $CURRENT_FRAME/$FRAME_COUNT"
+                            
+                            if command -v realesrgan-ncnn-vulkan &>/dev/null; then
+                                realesrgan-ncnn-vulkan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
+                            elif command -v realesrgan &>/dev/null; then
+                                realesrgan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
+                            fi
+                        fi
+                    done
+                    
+                    # Upscaled frame'leri video'ya birleştir
+                    echo ">>> Upscaled frame'ler video'ya birleştiriliyor..."
+                    FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 "$CURRENT_FILE" 2>/dev/null)
+                    
+                    if ffmpeg -framerate "$FPS" -i "$TEMP_UPSCALED_FRAMES/frame_%06d.jpg" \
+                    -i "$CURRENT_FILE" -map 0:v -map 1:a? \
+                    -c:v libx264 -preset slow -crf 18 \
+                    -c:a copy \
+                    "$UPSCALED_OUT" -y 2>>"$LOGFILE"; then
+                        echo "✅ BAŞARILI: AI Upscale tamamlandı: $UPSCALED_OUT"
+                        CURRENT_FILE="$UPSCALED_OUT"
+                    else
+                        echo "❌ BAŞARISIZ: Upscaled frame'ler video'ya birleştirilemedi!" | tee -a "$LOGFILE"
+                    fi
+                    
+                    # Temizlik
+                    rm -rf "$TEMP_FRAMES"
+                    rm -rf "$TEMP_UPSCALED_FRAMES"
+                else
+                    echo "❌ BAŞARISIZ: Frame'ler çıkarılamadı!" | tee -a "$LOGFILE"
+                fi
+            else
+                echo "⚠️  Real-ESRGAN yüklü değil!" | tee -a "$LOGFILE"
+                echo "   Yüklemek için:" | tee -a "$LOGFILE"
+                echo "   - pip install realesrgan" | tee -a "$LOGFILE"
+                echo "   - veya: https://github.com/xinntao/Real-ESRGAN" | tee -a "$LOGFILE"
+                echo "   Upscale atlandı, orijinal dosya kullanılacak."
+            fi
+            ;;
+        3)
+            echo "Upscale atlandı."
+            ;;
+        *)
+            echo "Geçersiz seçim, upscale atlandı."
+            ;;
+    esac
+
+    # [2] Metadata yaz
+    echo
+    echo "=== [2] Metadata Yazma ==="
     echo ">>> Metadata yazılıyor..."
-    if ffmpeg -i "$INPUT" \
+    if ffmpeg -i "$CURRENT_FILE" \
     -metadata make="$MAKE" \
     -metadata model="$MODEL" \
     -metadata software="$SOFTWARE" \
@@ -385,18 +546,6 @@ for INPUT in "${VIDEOS[@]}"; do
         continue
     fi
 
-    # FastStart uygula ve meta klasörüne kaydet
-    echo ">>> FastStart (MOOV atom optimize) uygulanıyor..."
-    if ffmpeg -i "$TEMP" -movflags faststart -c copy "$META_OUT" -y 2>>"$LOGFILE"; then
-        echo "✅ BAŞARILI: FastStart uygulandı"
-        echo "✅ Meta dosya oluşturuldu: $META_OUT"
-    else
-        echo "❌ BAŞARISIZ: FastStart uygulanamadı!" | tee -a "$LOGFILE"
-        rm -f "$TEMP"
-        FAILED_VIDEOS+=("$INPUT (FastStart uygulanamadı)")
-        continue
-    fi
-
     # ExifTool (opsiyonel)
     read -p "ExifTool metadata enjekte edilsin mi? (e/h): " USE_EXIF
     if [[ "$USE_EXIF" == "e" || "$USE_EXIF" == "E" ]]; then
@@ -405,11 +554,26 @@ for INPUT in "${VIDEOS[@]}"; do
         -Make="$MAKE" \
         -Model="$MODEL" \
         -Software="$SOFTWARE" \
-        "$META_OUT" >>"$LOGFILE" 2>&1; then
+        "$TEMP" >>"$LOGFILE" 2>&1; then
             echo "✅ BAŞARILI: ExifTool metadata eklendi"
         else
             echo "❌ BAŞARISIZ: ExifTool metadata eklenemedi!" | tee -a "$LOGFILE"
         fi
+    fi
+
+    # [3] FastStart (moov atom en başa)
+    echo
+    echo "=== [3] FastStart (MOOV Atom Optimize) ==="
+    echo ">>> FastStart uygulanıyor..."
+    if ffmpeg -i "$TEMP" -movflags faststart -c copy "$META_OUT" -y 2>>"$LOGFILE"; then
+        echo "✅ BAŞARILI: FastStart uygulandı"
+        echo "✅ Meta dosya oluşturuldu: $META_OUT"
+        CURRENT_FILE="$META_OUT"
+    else
+        echo "❌ BAŞARISIZ: FastStart uygulanamadı!" | tee -a "$LOGFILE"
+        rm -f "$TEMP"
+        FAILED_VIDEOS+=("$INPUT (FastStart uygulanamadı)")
+        continue
     fi
 
     # Metadata doğrulama
@@ -431,7 +595,122 @@ for INPUT in "${VIDEOS[@]}"; do
     QUALITY_SCORE=$(calculate_quality_score "$META_OUT")
     echo "📊 Kalite Skoru: $QUALITY_SCORE/100"
 
-    # Upscale seçimi
+    # [4] Thumbnail / AI Thumbnail
+    echo
+    echo "=== [4] Thumbnail / AI Thumbnail ==="
+    read -p "Cover thumbnail eklensin mi? (e/h): " THMB
+
+    if [[ "$THMB" == "e" || "$THMB" == "E" ]]; then
+        TARGET_FILE="$META_OUT"
+        
+        THUMB_FILE="meta/${BASENAME}_thumb.jpg"
+        
+        echo
+        echo "Thumbnail seçimi:"
+        echo "1) AI ile otomatik seçim (CLIP modeli)"
+        echo "2) İlk frame (frame 0)"
+        read -p "Seçiminiz (1-2): " THUMB_METHOD
+        
+        if [[ "$THUMB_METHOD" == "1" ]]; then
+            # AI thumbnail seçimi
+            echo ">>> AI thumbnail seçiliyor (CLIP modeli kullanılıyor)..."
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            
+            # Python ve gerekli kütüphaneleri kontrol et
+            if ! command -v python3 &>/dev/null; then
+                echo "❌ Python3 yüklü değil! İlk frame kullanılıyor..." | tee -a "$LOGFILE"
+                THUMB_METHOD="2"
+            else
+                # Virtual environment kontrolü
+                PYTHON_CMD="python3"
+                if [ -f "$SCRIPT_DIR/venv_ai_thumb/bin/python" ]; then
+                    PYTHON_CMD="$SCRIPT_DIR/venv_ai_thumb/bin/python"
+                    echo ">>> Virtual environment bulundu, kullanılıyor..."
+                elif [ -f "$SCRIPT_DIR/venv/bin/python" ]; then
+                    PYTHON_CMD="$SCRIPT_DIR/venv/bin/python"
+                    echo ">>> Virtual environment bulundu, kullanılıyor..."
+                fi
+                
+                # CLIP kütüphanesini kontrol et (clip veya clip-anytorch)
+                if ! $PYTHON_CMD -c "import clip" 2>/dev/null && ! $PYTHON_CMD -c "import clip_anytorch" 2>/dev/null; then
+                    echo "⚠️  CLIP kütüphanesi yüklü değil!" | tee -a "$LOGFILE"
+                    echo "   Virtual environment kullanmanız gerekiyor:" | tee -a "$LOGFILE"
+                    echo "   1. python3 -m venv venv_ai_thumb" | tee -a "$LOGFILE"
+                    echo "   2. source venv_ai_thumb/bin/activate" | tee -a "$LOGFILE"
+                    echo "   3. pip install torch torchvision pillow clip-anytorch tqdm" | tee -a "$LOGFILE"
+                    echo "   İlk frame kullanılıyor..." | tee -a "$LOGFILE"
+                    THUMB_METHOD="2"
+                else
+                    # AI thumbnail oluştur (output path'i parametre olarak geç)
+                    if $PYTHON_CMD "$SCRIPT_DIR/ai_thumbnail.py" "$TARGET_FILE" "$THUMB_FILE" 2>>"$LOGFILE"; then
+                        if [ -f "$THUMB_FILE" ]; then
+                            echo "✅ BAŞARILI: AI thumbnail oluşturuldu: $THUMB_FILE"
+                        else
+                            echo "⚠️  AI thumbnail dosyası bulunamadı, ilk frame kullanılıyor..." | tee -a "$LOGFILE"
+                            THUMB_METHOD="2"
+                        fi
+                    else
+                        echo "❌ AI thumbnail oluşturulamadı, ilk frame kullanılıyor..." | tee -a "$LOGFILE"
+                        THUMB_METHOD="2"
+                    fi
+                fi
+            fi
+        fi
+        
+        if [[ "$THUMB_METHOD" == "2" ]]; then
+            # İlk frame
+            echo ">>> İlk frame'den thumbnail alınıyor..."
+            if ffmpeg -i "$TARGET_FILE" -ss 0 -vframes 1 "$THUMB_FILE" -y 2>>"$LOGFILE"; then
+                echo "✅ BAŞARILI: Thumbnail oluşturuldu: $THUMB_FILE"
+            else
+                echo "❌ BAŞARISIZ: Thumbnail oluşturulamadı!" | tee -a "$LOGFILE"
+            fi
+        fi
+        
+        # Thumbnail'i MP4'e embed et (opsiyonel)
+        echo
+        read -p "Thumbnail MP4 dosyasına embed edilsin mi? (e/h): " EMBED_THUMB
+        if [[ "$EMBED_THUMB" == "e" || "$EMBED_THUMB" == "E" ]]; then
+            if [ -f "$THUMB_FILE" ]; then
+                EMBED_OUT="${META_OUT%.mp4}_THUMB.mp4"
+                echo ">>> Thumbnail MP4'e embed ediliyor..."
+                # Thumbnail'i attached picture olarak ekle
+                if ffmpeg -i "$META_OUT" -i "$THUMB_FILE" \
+                -map 0:v -map 0:a? -map 1 \
+                -c:v copy -c:a copy -c:s copy \
+                -disposition:2 attached_pic \
+                "$EMBED_OUT" -y 2>>"$LOGFILE"; then
+                    echo "✅ BAŞARILI: Thumbnail MP4'e eklendi: $EMBED_OUT"
+                    # Embed edilmiş dosyayı orijinal dosyanın yerine koy
+                    if [ -f "$EMBED_OUT" ]; then
+                        mv "$EMBED_OUT" "$META_OUT"
+                        CURRENT_FILE="$META_OUT"
+                    fi
+                else
+                    echo "❌ BAŞARISIZ: Thumbnail MP4'e eklenemedi!" | tee -a "$LOGFILE"
+                    echo "   Alternatif yöntem deneniyor..." | tee -a "$LOGFILE"
+                    # Alternatif: Thumbnail'i video stream olarak ekle
+                    if ffmpeg -i "$META_OUT" -i "$THUMB_FILE" \
+                    -map 0 -map 1:v \
+                    -c:v copy -c:a copy \
+                    -disposition:1 attached_pic \
+                    "$EMBED_OUT" -y 2>>"$LOGFILE"; then
+                        echo "✅ BAŞARILI: Thumbnail alternatif yöntemle eklendi: $EMBED_OUT"
+                        if [ -f "$EMBED_OUT" ]; then
+                            mv "$EMBED_OUT" "$META_OUT"
+                            CURRENT_FILE="$META_OUT"
+                        fi
+                    else
+                        echo "❌ BAŞARISIZ: Thumbnail hiçbir yöntemle eklenemedi!" | tee -a "$LOGFILE"
+                    fi
+                fi
+            else
+                echo "⚠️  Thumbnail dosyası bulunamadı: $THUMB_FILE" | tee -a "$LOGFILE"
+            fi
+        fi
+    fi
+
+    # [5] Bitrate
     echo
     echo "=== Upscale (Çözünürlük Artırma) ==="
     echo "1) FFmpeg Upscale (Hızlı, basit)"
@@ -595,13 +874,15 @@ for INPUT in "${VIDEOS[@]}"; do
             ;;
     esac
 
-    # Bitrate optimizasyonu
+    # [5] Bitrate
     echo
+    echo "=== [5] Bitrate Optimizasyonu ==="
+    OPTIMIZED_SCORE=""
     if [ -n "$BITRATE" ]; then
-        read -p "Bitrate optimizasyonu yapılsın mı? (Bitrate: $BITRATE) (e/h): " DO_SOCIAL
+        read -p "Bitrate optimizasyonu yapılsın mı? (Bitrate: $BITRATE) (e/h): " DO_BITRATE
     else
-        read -p "Bitrate optimizasyonu yapılsın mı? (e/h): " DO_SOCIAL
-        if [[ "$DO_SOCIAL" == "e" || "$DO_SOCIAL" == "E" ]]; then
+        read -p "Bitrate optimizasyonu yapılsın mı? (e/h): " DO_BITRATE
+        if [[ "$DO_BITRATE" == "e" || "$DO_BITRATE" == "E" ]]; then
             echo
             echo "Bitrate değeri girilmedi. Manuel bitrate girmek ister misiniz?"
             read -p "Manuel bitrate girin (örn: 10M) veya Enter'a basarak atlayın: " MANUAL_BITRATE
@@ -611,160 +892,51 @@ for INPUT in "${VIDEOS[@]}"; do
                     echo "Bitrate: $BITRATE"
                 else
                     echo "⚠️  Geçersiz format! Bitrate optimizasyonu atlandı."
-                    DO_SOCIAL="h"
+                    DO_BITRATE="h"
                 fi
             else
                 echo "Bitrate optimizasyonu atlandı."
-                DO_SOCIAL="h"
+                DO_BITRATE="h"
             fi
         fi
     fi
     
-    if [[ "$DO_SOCIAL" == "e" || "$DO_SOCIAL" == "E" ]]; then
+    if [[ "$DO_BITRATE" == "e" || "$DO_BITRATE" == "E" ]]; then
         if [ -z "$BITRATE" ]; then
             echo "❌ Bitrate değeri belirtilmedi! Optimizasyon atlandı." | tee -a "$LOGFILE"
+            FINAL_OUT="$META_OUT"
         else
             echo ">>> Bitrate optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
             if ffmpeg -i "$CURRENT_FILE" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
                 echo "✅ BAŞARILI: Bitrate optimizasyonu tamamlandı"
                 echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
+                FINAL_OUT="$OPTIMIZED_OUT"
                 
                 # Optimized dosya için de kalite skoru
                 OPTIMIZED_SCORE=$(calculate_quality_score "$OPTIMIZED_OUT")
                 echo "📊 Optimized Kalite Skoru: $OPTIMIZED_SCORE/100"
-                
-                PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$OPTIMIZED_OUT|$QUALITY_SCORE|$OPTIMIZED_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
             else
                 echo "❌ BAŞARISIZ: Bitrate optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
-                PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
+                FINAL_OUT="$META_OUT"
             fi
         fi
     else
-        PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
+        FINAL_OUT="$META_OUT"
     fi
 
-    # Thumbnail (opsiyonel)
+    # [6] Final output
     echo
-    read -p "Cover thumbnail eklensin mi? (e/h): " THMB
-
-    if [[ "$THMB" == "e" || "$THMB" == "E" ]]; then
-        TARGET_FILE="$OPTIMIZED_OUT"
-        if [ ! -f "$OPTIMIZED_OUT" ]; then
-            TARGET_FILE="$UPSCALED_OUT"
-            if [ ! -f "$UPSCALED_OUT" ]; then
-                TARGET_FILE="$META_OUT"
-            fi
+    echo "=== [6] Final Output ==="
+    if [ -f "$FINAL_OUT" ]; then
+        echo "✅ BAŞARILI: Final dosya hazır -> $FINAL_OUT"
+        if [ -n "$OPTIMIZED_SCORE" ]; then
+            PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$FINAL_OUT|$QUALITY_SCORE|$OPTIMIZED_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
+        else
+            PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$FINAL_OUT|$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
         fi
-        
-        THUMB_FILE="optimized/${BASENAME}_thumb.jpg"
-        if [ ! -f "$OPTIMIZED_OUT" ]; then
-            THUMB_FILE="upscaled/${BASENAME}_thumb.jpg"
-            if [ ! -f "$UPSCALED_OUT" ]; then
-                THUMB_FILE="meta/${BASENAME}_thumb.jpg"
-            fi
-        fi
-        
-        echo
-        echo "Thumbnail seçimi:"
-        echo "1) AI ile otomatik seçim (CLIP modeli)"
-        echo "2) İlk frame (frame 0)"
-        read -p "Seçiminiz (1-2): " THUMB_METHOD
-        
-        if [[ "$THUMB_METHOD" == "1" ]]; then
-            # AI thumbnail seçimi
-            echo ">>> AI thumbnail seçiliyor (CLIP modeli kullanılıyor)..."
-            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-            
-            # Python ve gerekli kütüphaneleri kontrol et
-            if ! command -v python3 &>/dev/null; then
-                echo "❌ Python3 yüklü değil! İlk frame kullanılıyor..." | tee -a "$LOGFILE"
-                THUMB_METHOD="2"
-            else
-                # Virtual environment kontrolü
-                PYTHON_CMD="python3"
-                if [ -f "$SCRIPT_DIR/venv_ai_thumb/bin/python" ]; then
-                    PYTHON_CMD="$SCRIPT_DIR/venv_ai_thumb/bin/python"
-                    echo ">>> Virtual environment bulundu, kullanılıyor..."
-                elif [ -f "$SCRIPT_DIR/venv/bin/python" ]; then
-                    PYTHON_CMD="$SCRIPT_DIR/venv/bin/python"
-                    echo ">>> Virtual environment bulundu, kullanılıyor..."
-                fi
-                
-                # CLIP kütüphanesini kontrol et (clip veya clip-anytorch)
-                if ! $PYTHON_CMD -c "import clip" 2>/dev/null && ! $PYTHON_CMD -c "import clip_anytorch" 2>/dev/null; then
-                    echo "⚠️  CLIP kütüphanesi yüklü değil!" | tee -a "$LOGFILE"
-                    echo "   Virtual environment kullanmanız gerekiyor:" | tee -a "$LOGFILE"
-                    echo "   1. python3 -m venv venv_ai_thumb" | tee -a "$LOGFILE"
-                    echo "   2. source venv_ai_thumb/bin/activate" | tee -a "$LOGFILE"
-                    echo "   3. pip install torch torchvision pillow clip-anytorch tqdm" | tee -a "$LOGFILE"
-                    echo "   İlk frame kullanılıyor..." | tee -a "$LOGFILE"
-                    THUMB_METHOD="2"
-                else
-                    # AI thumbnail oluştur (output path'i parametre olarak geç)
-                    if $PYTHON_CMD "$SCRIPT_DIR/ai_thumbnail.py" "$TARGET_FILE" "$THUMB_FILE" 2>>"$LOGFILE"; then
-                        if [ -f "$THUMB_FILE" ]; then
-                            echo "✅ BAŞARILI: AI thumbnail oluşturuldu: $THUMB_FILE"
-                        else
-                            echo "⚠️  AI thumbnail dosyası bulunamadı, ilk frame kullanılıyor..." | tee -a "$LOGFILE"
-                            THUMB_METHOD="2"
-                        fi
-                    else
-                        echo "❌ AI thumbnail oluşturulamadı, ilk frame kullanılıyor..." | tee -a "$LOGFILE"
-                        THUMB_METHOD="2"
-                    fi
-                fi
-            fi
-        fi
-        
-        if [[ "$THUMB_METHOD" == "2" ]]; then
-            # İlk frame
-            echo ">>> İlk frame'den thumbnail alınıyor..."
-            if ffmpeg -i "$TARGET_FILE" -ss 0 -vframes 1 "$THUMB_FILE" -y 2>>"$LOGFILE"; then
-                echo "✅ BAŞARILI: Thumbnail oluşturuldu: $THUMB_FILE"
-            else
-                echo "❌ BAŞARISIZ: Thumbnail oluşturulamadı!" | tee -a "$LOGFILE"
-            fi
-        fi
-        
-        # Thumbnail'i MP4'e embed et (opsiyonel)
-        echo
-        read -p "Thumbnail MP4 dosyasına embed edilsin mi? (e/h): " EMBED_THUMB
-        if [[ "$EMBED_THUMB" == "e" || "$EMBED_THUMB" == "E" ]]; then
-            if [ -f "$THUMB_FILE" ]; then
-                EMBED_OUT="${TARGET_FILE%.mp4}_THUMB.mp4"
-                echo ">>> Thumbnail MP4'e embed ediliyor..."
-                # Thumbnail'i attached picture olarak ekle
-                if ffmpeg -i "$TARGET_FILE" -i "$THUMB_FILE" \
-                -map 0:v -map 0:a? -map 1 \
-                -c:v copy -c:a copy -c:s copy \
-                -disposition:2 attached_pic \
-                "$EMBED_OUT" -y 2>>"$LOGFILE"; then
-                    echo "✅ BAŞARILI: Thumbnail MP4'e eklendi: $EMBED_OUT"
-                    # Embed edilmiş dosyayı orijinal dosyanın yerine koy
-                    if [ -f "$EMBED_OUT" ]; then
-                        mv "$EMBED_OUT" "$TARGET_FILE"
-                    fi
-                else
-                    echo "❌ BAŞARISIZ: Thumbnail MP4'e eklenemedi!" | tee -a "$LOGFILE"
-                    echo "   Alternatif yöntem deneniyor..." | tee -a "$LOGFILE"
-                    # Alternatif: Thumbnail'i video stream olarak ekle
-                    if ffmpeg -i "$TARGET_FILE" -i "$THUMB_FILE" \
-                    -map 0 -map 1:v \
-                    -c:v copy -c:a copy \
-                    -disposition:1 attached_pic \
-                    "$EMBED_OUT" -y 2>>"$LOGFILE"; then
-                        echo "✅ BAŞARILI: Thumbnail alternatif yöntemle eklendi: $EMBED_OUT"
-                        if [ -f "$EMBED_OUT" ]; then
-                            mv "$EMBED_OUT" "$TARGET_FILE"
-                        fi
-                    else
-                        echo "❌ BAŞARISIZ: Thumbnail hiçbir yöntemle eklenemedi!" | tee -a "$LOGFILE"
-                    fi
-                fi
-            else
-                echo "⚠️  Thumbnail dosyası bulunamadı: $THUMB_FILE" | tee -a "$LOGFILE"
-            fi
-        fi
+    else
+        echo "❌ BAŞARISIZ: Final dosya oluşturulamadı!" | tee -a "$LOGFILE"
+        PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
     fi
 
     echo "------------------------------------------" | tee -a "$LOGFILE"

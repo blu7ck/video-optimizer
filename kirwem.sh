@@ -722,7 +722,6 @@ for INPUT in "${VIDEOS[@]}"; do
         DO_BITRATE="h"
     else
         # Bitrate set edildiyse, direkt yap (tekrar sorma)
-        echo "Bitrate optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
         DO_BITRATE="e"
     fi
     

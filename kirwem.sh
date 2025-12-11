@@ -761,8 +761,6 @@ for INPUT in "${VIDEOS[@]}"; do
                 CURRENT_FILE="$UPSCALED_OUT"
                 
                 # Upscaled dosya için kalite skoru
-                UPSCALED_SCORE=$(calculate_quality_score "$UPSCALED_OUT")
-                echo "📊 Upscaled Kalite Skoru: $UPSCALED_SCORE/100"
             else
                 echo "❌ BAŞARISIZ: FFmpeg upscale yapılamadı!" | tee -a "$LOGFILE"
                 echo "Orijinal dosya kullanılmaya devam edilecek."

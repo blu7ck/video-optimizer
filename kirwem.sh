@@ -731,6 +731,12 @@ for INPUT in "${VIDEOS[@]}"; do
     # [6] Final output
     echo
     echo "=== [6] Final Output ==="
+    
+    # FINAL_OUT henüz set edilmediyse, META_OUT'u kullan
+    if [ -z "$FINAL_OUT" ]; then
+        FINAL_OUT="$META_OUT"
+    fi
+    
     if [ -f "$FINAL_OUT" ]; then
         echo "✅ BAŞARILI: Final dosya hazır -> $FINAL_OUT"
         if [ -n "$OPTIMIZED_SCORE" ]; then

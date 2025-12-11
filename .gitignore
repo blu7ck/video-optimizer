@@ -7,9 +7,12 @@ env/
 # Output klasörleri
 meta/
 optimized/
+upscaled/
 output/
 logs/
 temp_frames/
+temp_frames_*/
+temp_upscaled_frames_*/
 
 # Geçici dosyalar
 temp_*.mp4

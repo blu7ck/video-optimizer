@@ -718,6 +718,7 @@ for INPUT in "${VIDEOS[@]}"; do
             echo "✅ BAŞARILI: Bitrate optimizasyonu tamamlandı"
             echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
             FINAL_OUT="$OPTIMIZED_OUT"
+            CURRENT_FILE="$OPTIMIZED_OUT"  # CURRENT_FILE'ı güncelle
             
             # Optimized dosya için de kalite skoru
             OPTIMIZED_SCORE=$(calculate_quality_score "$OPTIMIZED_OUT")

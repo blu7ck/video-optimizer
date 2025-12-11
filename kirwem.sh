@@ -9,6 +9,7 @@ echo
 mkdir -p meta
 mkdir -p optimized
 mkdir -p logs
+mkdir -p upscaled
 
 LOGFILE="logs/optimize_$(date +%Y%m%d_%H%M%S).log"
 REPORTFILE="logs/report_$(date +%Y%m%d_%H%M%S).txt"
@@ -360,6 +361,7 @@ for INPUT in "${VIDEOS[@]}"; do
     BASENAME=$(basename "$INPUT" .mp4)
     TEMP="temp_${BASENAME}.mp4"
     META_OUT="meta/${BASENAME}_meta.mp4"
+    UPSCALED_OUT="upscaled/${BASENAME}_upscaled.mp4"
     OPTIMIZED_OUT="optimized/${BASENAME}_optimized.mp4"
 
     echo
@@ -429,12 +431,176 @@ for INPUT in "${VIDEOS[@]}"; do
     QUALITY_SCORE=$(calculate_quality_score "$META_OUT")
     echo "📊 Kalite Skoru: $QUALITY_SCORE/100"
 
-    # Sosyal medya optimizasyonu
+    # Upscale seçimi
+    echo
+    echo "=== Upscale (Çözünürlük Artırma) ==="
+    echo "1) FFmpeg Upscale (Hızlı, basit)"
+    echo "2) AI Upscale - Real-ESRGAN (Yavaş, yüksek kalite)"
+    echo "3) Upscale yapma (atla)"
+    read -p "Seçiminiz (1-3): " UPSCALE_CHOICE
+
+    CURRENT_FILE="$META_OUT"
+    
+    case $UPSCALE_CHOICE in
+        1)
+            # FFmpeg Upscale
+            echo
+            echo "=== FFmpeg Upscale Çözünürlük Seçimi ==="
+            echo "1) 1080p (1920x1080)"
+            echo "2) 1440p (2560x1440)"
+            echo "3) 4K (3840x2160)"
+            echo "4) Özel çözünürlük gir"
+            read -p "Seçiminiz (1-4): " RESOLUTION_CHOICE
+            
+            case $RESOLUTION_CHOICE in
+                1)
+                    TARGET_RES="1920:1080"
+                    ;;
+                2)
+                    TARGET_RES="2560:1440"
+                    ;;
+                3)
+                    TARGET_RES="3840:2160"
+                    ;;
+                4)
+                    read -p "Genişlik: " WIDTH
+                    read -p "Yükseklik: " HEIGHT
+                    TARGET_RES="${WIDTH}:${HEIGHT}"
+                    ;;
+                *)
+                    echo "Geçersiz seçim, 1080p kullanılıyor."
+                    TARGET_RES="1920:1080"
+                    ;;
+            esac
+            
+            echo ">>> FFmpeg ile upscale yapılıyor ($TARGET_RES)..."
+            if ffmpeg -i "$CURRENT_FILE" \
+            -vf "scale=$TARGET_RES:flags=lanczos" \
+            -c:a copy \
+            "$UPSCALED_OUT" -y 2>>"$LOGFILE"; then
+                echo "✅ BAŞARILI: FFmpeg upscale tamamlandı: $UPSCALED_OUT"
+                CURRENT_FILE="$UPSCALED_OUT"
+                
+                # Upscaled dosya için kalite skoru
+                UPSCALED_SCORE=$(calculate_quality_score "$UPSCALED_OUT")
+                echo "📊 Upscaled Kalite Skoru: $UPSCALED_SCORE/100"
+            else
+                echo "❌ BAŞARISIZ: FFmpeg upscale yapılamadı!" | tee -a "$LOGFILE"
+                echo "Orijinal dosya kullanılmaya devam edilecek."
+            fi
+            ;;
+        2)
+            # AI Upscale (Real-ESRGAN)
+            echo
+            echo ">>> AI Upscale (Real-ESRGAN) kontrol ediliyor..."
+            
+            # Real-ESRGAN kontrolü
+            if command -v realesrgan-ncnn-vulkan &>/dev/null || command -v realesrgan &>/dev/null; then
+                echo "Real-ESRGAN bulundu."
+                echo
+                echo "=== AI Upscale Model Seçimi ==="
+                echo "1) realesrgan-x4plus (4x upscale, önerilen)"
+                echo "2) realesrgan-x4plus-anime (Anime için)"
+                echo "3) realesrgan-x2plus (2x upscale, hızlı)"
+                read -p "Seçiminiz (1-3): " MODEL_CHOICE
+                
+                case $MODEL_CHOICE in
+                    1)
+                        MODEL_NAME="realesrgan-x4plus"
+                        SCALE=4
+                        ;;
+                    2)
+                        MODEL_NAME="realesrgan-x4plus-anime"
+                        SCALE=4
+                        ;;
+                    3)
+                        MODEL_NAME="realesrgan-x2plus"
+                        SCALE=2
+                        ;;
+                    *)
+                        MODEL_NAME="realesrgan-x4plus"
+                        SCALE=4
+                        ;;
+                esac
+                
+                echo ">>> AI Upscale yapılıyor (Model: $MODEL_NAME)..."
+                echo "⚠️  Bu işlem uzun sürebilir (video uzunluğuna bağlı)..."
+                
+                # Real-ESRGAN video işleme için frame'leri çıkar, upscale et, birleştir
+                TEMP_FRAMES="temp_frames_${BASENAME}"
+                TEMP_UPSCALED_FRAMES="temp_upscaled_frames_${BASENAME}"
+                mkdir -p "$TEMP_FRAMES"
+                mkdir -p "$TEMP_UPSCALED_FRAMES"
+                
+                # Video'dan frame'leri çıkar
+                echo ">>> Frame'ler çıkarılıyor..."
+                if ffmpeg -i "$CURRENT_FILE" -qscale:v 1 "$TEMP_FRAMES/frame_%06d.jpg" -y 2>>"$LOGFILE"; then
+                    # Her frame'i upscale et
+                    echo ">>> Frame'ler upscale ediliyor (bu uzun sürebilir)..."
+                    FRAME_COUNT=$(ls -1 "$TEMP_FRAMES"/*.jpg 2>/dev/null | wc -l)
+                    CURRENT_FRAME=0
+                    
+                    for frame in "$TEMP_FRAMES"/*.jpg; do
+                        if [ -f "$frame" ]; then
+                            CURRENT_FRAME=$((CURRENT_FRAME + 1))
+                            FRAME_NAME=$(basename "$frame")
+                            echo ">>> İşleniyor: $CURRENT_FRAME/$FRAME_COUNT"
+                            
+                            if command -v realesrgan-ncnn-vulkan &>/dev/null; then
+                                realesrgan-ncnn-vulkan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
+                            elif command -v realesrgan &>/dev/null; then
+                                realesrgan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
+                            fi
+                        fi
+                    done
+                    
+                    # Upscaled frame'leri video'ya birleştir
+                    echo ">>> Upscaled frame'ler video'ya birleştiriliyor..."
+                    FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 "$CURRENT_FILE" 2>/dev/null)
+                    
+                    if ffmpeg -framerate "$FPS" -i "$TEMP_UPSCALED_FRAMES/frame_%06d.jpg" \
+                    -i "$CURRENT_FILE" -map 0:v -map 1:a? \
+                    -c:v libx264 -preset slow -crf 18 \
+                    -c:a copy \
+                    "$UPSCALED_OUT" -y 2>>"$LOGFILE"; then
+                        echo "✅ BAŞARILI: AI Upscale tamamlandı: $UPSCALED_OUT"
+                        CURRENT_FILE="$UPSCALED_OUT"
+                        
+                        # Upscaled dosya için kalite skoru
+                        UPSCALED_SCORE=$(calculate_quality_score "$UPSCALED_OUT")
+                        echo "📊 Upscaled Kalite Skoru: $UPSCALED_SCORE/100"
+                    else
+                        echo "❌ BAŞARISIZ: Upscaled frame'ler video'ya birleştirilemedi!" | tee -a "$LOGFILE"
+                    fi
+                    
+                    # Temizlik
+                    rm -rf "$TEMP_FRAMES"
+                    rm -rf "$TEMP_UPSCALED_FRAMES"
+                else
+                    echo "❌ BAŞARISIZ: Frame'ler çıkarılamadı!" | tee -a "$LOGFILE"
+                fi
+            else
+                echo "⚠️  Real-ESRGAN yüklü değil!" | tee -a "$LOGFILE"
+                echo "   Yüklemek için:" | tee -a "$LOGFILE"
+                echo "   - pip install realesrgan" | tee -a "$LOGFILE"
+                echo "   - veya: https://github.com/xinntao/Real-ESRGAN" | tee -a "$LOGFILE"
+                echo "   Upscale atlandı, orijinal dosya kullanılacak."
+            fi
+            ;;
+        3)
+            echo "Upscale atlandı."
+            ;;
+        *)
+            echo "Geçersiz seçim, upscale atlandı."
+            ;;
+    esac
+
+    # Bitrate optimizasyonu
     echo
     if [ -n "$BITRATE" ]; then
-        read -p "Sosyal medya için optimize edilsin mi? (Bitrate: $BITRATE) (e/h): " DO_SOCIAL
+        read -p "Bitrate optimizasyonu yapılsın mı? (Bitrate: $BITRATE) (e/h): " DO_SOCIAL
     else
-        read -p "Sosyal medya için optimize edilsin mi? (e/h): " DO_SOCIAL
+        read -p "Bitrate optimizasyonu yapılsın mı? (e/h): " DO_SOCIAL
         if [[ "$DO_SOCIAL" == "e" || "$DO_SOCIAL" == "E" ]]; then
             echo
             echo "Bitrate değeri girilmedi. Manuel bitrate girmek ister misiniz?"
@@ -459,7 +625,7 @@ for INPUT in "${VIDEOS[@]}"; do
             echo "❌ Bitrate değeri belirtilmedi! Optimizasyon atlandı." | tee -a "$LOGFILE"
         else
             echo ">>> Bitrate optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
-            if ffmpeg -i "$META_OUT" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
+            if ffmpeg -i "$CURRENT_FILE" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
                 echo "✅ BAŞARILI: Bitrate optimizasyonu tamamlandı"
                 echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
                 
@@ -484,12 +650,18 @@ for INPUT in "${VIDEOS[@]}"; do
     if [[ "$THMB" == "e" || "$THMB" == "E" ]]; then
         TARGET_FILE="$OPTIMIZED_OUT"
         if [ ! -f "$OPTIMIZED_OUT" ]; then
-            TARGET_FILE="$META_OUT"
+            TARGET_FILE="$UPSCALED_OUT"
+            if [ ! -f "$UPSCALED_OUT" ]; then
+                TARGET_FILE="$META_OUT"
+            fi
         fi
         
         THUMB_FILE="optimized/${BASENAME}_thumb.jpg"
         if [ ! -f "$OPTIMIZED_OUT" ]; then
-            THUMB_FILE="meta/${BASENAME}_thumb.jpg"
+            THUMB_FILE="upscaled/${BASENAME}_thumb.jpg"
+            if [ ! -f "$UPSCALED_OUT" ]; then
+                THUMB_FILE="meta/${BASENAME}_thumb.jpg"
+            fi
         fi
         
         echo

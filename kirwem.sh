@@ -48,26 +48,32 @@ calculate_quality_score() {
     local bitrate=$(ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=noprint_wrappers=1:nokey=1 "$video_file" 2>/dev/null)
     local fps=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 "$video_file" 2>/dev/null | awk -F'/' '{print $1/$2}')
     
-    # Çözünürlük puanı (max 30)
+    # Çözünürlük puanı (max 35)
     if [ -n "$width" ] && [ -n "$height" ]; then
-        if [ "$width" -ge 1080 ] && [ "$height" -ge 1080 ]; then
-            score=$((score + 30))
-        elif [ "$width" -ge 720 ] && [ "$height" -ge 720 ]; then
-            score=$((score + 20))
-        elif [ "$width" -ge 480 ] && [ "$height" -ge 480 ]; then
-            score=$((score + 10))
+        if [ "$width" -ge 1920 ] && [ "$height" -ge 1080 ]; then
+            score=$((score + 35))  # 1080p ve üzeri
+        elif [ "$width" -ge 1280 ] && [ "$height" -ge 720 ]; then
+            score=$((score + 25))  # 720p
+        elif [ "$width" -ge 854 ] && [ "$height" -ge 480 ]; then
+            score=$((score + 15))  # 480p
+        elif [ "$width" -ge 640 ] && [ "$height" -ge 360 ]; then
+            score=$((score + 5))   # 360p
         fi
     fi
     
-    # Bitrate puanı (max 30)
+    # Bitrate puanı (max 35)
     if [ -n "$bitrate" ]; then
         local bitrate_mbps=$((bitrate / 1000000))
-        if [ "$bitrate_mbps" -ge 8 ] && [ "$bitrate_mbps" -le 15 ]; then
-            score=$((score + 30))
+        if [ "$bitrate_mbps" -ge 10 ] && [ "$bitrate_mbps" -le 20 ]; then
+            score=$((score + 35))  # İdeal aralık (10-20 Mbps)
+        elif [ "$bitrate_mbps" -ge 8 ] && [ "$bitrate_mbps" -lt 10 ]; then
+            score=$((score + 30))  # İyi (8-10 Mbps)
         elif [ "$bitrate_mbps" -ge 5 ] && [ "$bitrate_mbps" -lt 8 ]; then
-            score=$((score + 20))
+            score=$((score + 20))  # Orta (5-8 Mbps)
         elif [ "$bitrate_mbps" -ge 3 ] && [ "$bitrate_mbps" -lt 5 ]; then
-            score=$((score + 10))
+            score=$((score + 10))  # Düşük (3-5 Mbps)
+        elif [ "$bitrate_mbps" -ge 20 ]; then
+            score=$((score + 30))  # Çok yüksek (20+ Mbps) - biraz düşük puan
         fi
     fi
     
@@ -75,23 +81,31 @@ calculate_quality_score() {
     if [ -n "$fps" ]; then
         local fps_int=$(printf "%.0f" "$fps")
         if [ "$fps_int" -ge 30 ]; then
-            score=$((score + 20))
+            score=$((score + 20))  # 30+ FPS
         elif [ "$fps_int" -ge 24 ]; then
-            score=$((score + 15))
+            score=$((score + 15))  # 24-29 FPS
         elif [ "$fps_int" -ge 20 ]; then
-            score=$((score + 10))
+            score=$((score + 10))  # 20-23 FPS
+        elif [ "$fps_int" -ge 15 ]; then
+            score=$((score + 5))   # 15-19 FPS
         fi
     fi
     
-    # FastStart kontrolü (max 20)
+    # FastStart kontrolü (max 10)
     if command -v mp4dump &>/dev/null; then
         if mp4dump "$video_file" 2>/dev/null | head -n 20 | grep -q "moov"; then
-            score=$((score + 20))
+            score=$((score + 10))
         fi
     else
         # mp4dump yoksa ffprobe ile kontrol
         if ffprobe -v error -show_format "$video_file" 2>/dev/null | grep -q "faststart"; then
-            score=$((score + 20))
+            score=$((score + 10))
+        else
+            # Alternatif kontrol: od ile moov atom kontrolü
+            local moov_found=$(od -A x -t x1z -N 200 "$video_file" 2>/dev/null | grep -o "6d 6f 6f 76" | head -n 1)
+            if [ -n "$moov_found" ]; then
+                score=$((score + 10))
+            fi
         fi
     fi
     

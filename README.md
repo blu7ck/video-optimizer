@@ -20,7 +20,7 @@ Video optimization script for social media platforms (Instagram, TikTok, YouTube
 - 📊 **Quality Score**: 0-100 quality assessment for each video
 - ✅ **Metadata Verification**: Individual metadata validation for each video
 - 📈 **Detailed Reports**: Post-processing batch reports
-- 📁 **Organized Output**: Automatic separation into Meta and Social folders
+- 📁 **Organized Output**: Automatic separation into Meta and Optimized folders
 
 ### 📋 Requirements
 
@@ -229,9 +229,9 @@ Script/
 ├── meta/               # Videos with metadata added
 │   ├── video1_meta.mp4
 │   └── video2_meta.mp4
-├── social/             # Optimized videos for social media
-│   ├── video1_social.mp4
-│   └── video2_social.mp4
+├── optimized/          # Bitrate optimized videos
+│   ├── video1_optimized.mp4
+│   └── video2_optimized.mp4
 └── logs/               # Log and report files
     ├── optimize_YYYYMMDD_HHMMSS.log
     └── report_YYYYMMDD_HHMMSS.txt
@@ -250,9 +250,9 @@ Script/
 - FastStart optimization applied
 - Original quality
 
-#### Social Folder
+#### Optimized Folder
 - Platform-based bitrate optimization
-- Optimized for social media
+- Bitrate optimized videos
 - Smaller file size
 
 #### Logs Folder
@@ -347,7 +347,7 @@ Sosyal medya platformları (Instagram, TikTok, YouTube Shorts) için video optim
 - 📊 **Kalite Skoru**: Her video için 0-100 arası kalite değerlendirmesi
 - ✅ **Metadata Doğrulama**: Her video için ayrı metadata kontrolü
 - 📈 **Detaylı Rapor**: İşlem sonrası toplu rapor oluşturma
-- 📁 **Organize Çıktı**: Meta ve Social klasörlerine otomatik ayrıştırma
+- 📁 **Organize Çıktı**: Meta ve Optimized klasörlerine otomatik ayrıştırma
 
 ## 📋 Gereksinimler
 
@@ -556,9 +556,9 @@ Script/
 ├── meta/               # Metadata eklenmiş videolar
 │   ├── video1_meta.mp4
 │   └── video2_meta.mp4
-├── social/             # Sosyal medya için optimize edilmiş videolar
-│   ├── video1_social.mp4
-│   └── video2_social.mp4
+├── optimized/          # Bitrate optimize edilmiş videolar
+│   ├── video1_optimized.mp4
+│   └── video2_optimized.mp4
 └── logs/               # Log ve rapor dosyaları
     ├── optimize_YYYYMMDD_HHMMSS.log
     └── report_YYYYMMDD_HHMMSS.txt
@@ -587,9 +587,9 @@ python3 ai_thumbnail.py video.mp4 output_thumb.jpg
 - FastStart optimizasyonu uygulanmış
 - Orijinal kalitede
 
-### Social Klasörü
+### Optimized Klasörü
 - Platform bazlı bitrate optimizasyonu
-- Sosyal medya için optimize edilmiş
+- Bitrate optimize edilmiş videolar
 - Daha küçük dosya boyutu
 
 ### Logs Klasörü
@@ -688,7 +688,7 @@ cp /path/to/videos/*.mp4 .
 
 # 4. Sonuçlar:
 #    - meta/ klasöründe metadata eklenmiş videolar
-#    - social/ klasöründe optimize edilmiş videolar
+#    - optimized/ klasöründe optimize edilmiş videolar
 #    - logs/ klasöründe raporlar
 ```
 

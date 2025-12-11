@@ -6,7 +6,7 @@ env/
 
 # Output klasörleri
 meta/
-social/
+optimized/
 output/
 logs/
 temp_frames/

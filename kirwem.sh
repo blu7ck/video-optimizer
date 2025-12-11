@@ -7,7 +7,7 @@ echo
 
 # ÇIKTI KLASÖRÜ
 mkdir -p meta
-mkdir -p social
+mkdir -p optimized
 mkdir -p logs
 
 LOGFILE="logs/optimize_$(date +%Y%m%d_%H%M%S).log"
@@ -360,7 +360,7 @@ for INPUT in "${VIDEOS[@]}"; do
     BASENAME=$(basename "$INPUT" .mp4)
     TEMP="temp_${BASENAME}.mp4"
     META_OUT="meta/${BASENAME}_meta.mp4"
-    SOCIAL_OUT="social/${BASENAME}_social.mp4"
+    OPTIMIZED_OUT="optimized/${BASENAME}_optimized.mp4"
 
     echo
     echo "------------------------------------------"
@@ -458,18 +458,18 @@ for INPUT in "${VIDEOS[@]}"; do
         if [ -z "$BITRATE" ]; then
             echo "❌ Bitrate değeri belirtilmedi! Optimizasyon atlandı." | tee -a "$LOGFILE"
         else
-            echo ">>> Sosyal medya optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
-            if ffmpeg -i "$META_OUT" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$SOCIAL_OUT" -y 2>>"$LOGFILE"; then
-                echo "✅ BAŞARILI: Sosyal medya optimizasyonu tamamlandı"
-                echo "✅ Social dosya oluşturuldu: $SOCIAL_OUT"
+            echo ">>> Bitrate optimizasyonu yapılıyor (Bitrate: $BITRATE)..."
+            if ffmpeg -i "$META_OUT" -b:v "$BITRATE" -bufsize "$BITRATE" -maxrate "$BITRATE" -c:a copy "$OPTIMIZED_OUT" -y 2>>"$LOGFILE"; then
+                echo "✅ BAŞARILI: Bitrate optimizasyonu tamamlandı"
+                echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
                 
-                # Social dosya için de kalite skoru
-                SOCIAL_SCORE=$(calculate_quality_score "$SOCIAL_OUT")
-                echo "📊 Social Kalite Skoru: $SOCIAL_SCORE/100"
+                # Optimized dosya için de kalite skoru
+                OPTIMIZED_SCORE=$(calculate_quality_score "$OPTIMIZED_OUT")
+                echo "📊 Optimized Kalite Skoru: $OPTIMIZED_SCORE/100"
                 
-                PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$SOCIAL_OUT|$QUALITY_SCORE|$SOCIAL_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
+                PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$OPTIMIZED_OUT|$QUALITY_SCORE|$OPTIMIZED_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
             else
-                echo "❌ BAŞARISIZ: Sosyal medya optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
+                echo "❌ BAŞARISIZ: Bitrate optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
                 PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
             fi
         fi
@@ -482,13 +482,13 @@ for INPUT in "${VIDEOS[@]}"; do
     read -p "Cover thumbnail eklensin mi? (e/h): " THMB
 
     if [[ "$THMB" == "e" || "$THMB" == "E" ]]; then
-        TARGET_FILE="$SOCIAL_OUT"
-        if [ ! -f "$SOCIAL_OUT" ]; then
+        TARGET_FILE="$OPTIMIZED_OUT"
+        if [ ! -f "$OPTIMIZED_OUT" ]; then
             TARGET_FILE="$META_OUT"
         fi
         
-        THUMB_FILE="social/${BASENAME}_thumb.jpg"
-        if [ ! -f "$SOCIAL_OUT" ]; then
+        THUMB_FILE="optimized/${BASENAME}_thumb.jpg"
+        if [ ! -f "$OPTIMIZED_OUT" ]; then
             THUMB_FILE="meta/${BASENAME}_thumb.jpg"
         fi
         
@@ -612,14 +612,14 @@ echo "========================================================="
     echo
     
     for video_info in "${PROCESSED_VIDEOS[@]}"; do
-        IFS='|' read -r input meta_out social_out meta_score social_score metadata_result faststart_result <<< "$video_info"
+        IFS='|' read -r input meta_out optimized_out meta_score optimized_score metadata_result faststart_result <<< "$video_info"
         
         echo "📹 Video: $input"
         echo "   Meta: $meta_out (Skor: $meta_score/100)"
-        if [ -n "$social_out" ]; then
-            echo "   Social: $social_out (Skor: $social_score/100)"
+        if [ -n "$optimized_out" ]; then
+            echo "   Optimized: $optimized_out (Skor: $optimized_score/100)"
         else
-            echo "   Social: İşlenmedi"
+            echo "   Optimized: İşlenmedi"
         fi
         echo "   Metadata: $metadata_result"
         echo "   FastStart: $faststart_result"
@@ -655,7 +655,7 @@ else
 fi
 echo "========================================================="
 echo "Meta dosyalar: meta/ klasöründe"
-echo "Social dosyalar: social/ klasöründe"
+echo "Optimized dosyalar: optimized/ klasöründe"
 echo "Log dosyası: $LOGFILE"
 echo "Rapor dosyası: $REPORTFILE"
 echo

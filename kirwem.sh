@@ -529,25 +529,27 @@ for INPUT in "${VIDEOS[@]}"; do
             ;;
     esac
 
-    # [2] Metadata yaz
+    # [2] Metadata yaz + [3] FastStart (birlikte yapılıyor)
     echo
-    echo "=== [2] Metadata Yazma ==="
-    echo ">>> Metadata yazılıyor..."
+    echo "=== [2] Metadata Yazma + [3] FastStart (MOOV Atom Optimize) ==="
+    echo ">>> Metadata yazılıyor ve FastStart uygulanıyor..."
     if ffmpeg -i "$CURRENT_FILE" \
     -metadata make="$MAKE" \
     -metadata model="$MODEL" \
     -metadata software="$SOFTWARE" \
     -metadata creation_time="$(date -u +%Y-%m-%dT%H:%M:%S)" \
-    -c copy "$TEMP" -y 2>>"$LOGFILE"; then
-        echo "✅ BAŞARILI: Metadata eklendi"
+    -movflags faststart \
+    -c copy "$META_OUT" -y 2>>"$LOGFILE"; then
+        echo "✅ BAŞARILI: Metadata eklendi ve FastStart uygulandı"
+        echo "✅ Meta dosya oluşturuldu: $META_OUT"
+        CURRENT_FILE="$META_OUT"
     else
-        echo "❌ BAŞARISIZ: Metadata eklenemedi!" | tee -a "$LOGFILE"
-        rm -f "$TEMP"
-        FAILED_VIDEOS+=("$INPUT (Metadata eklenemedi)")
+        echo "❌ BAŞARISIZ: Metadata ve FastStart uygulanamadı!" | tee -a "$LOGFILE"
+        FAILED_VIDEOS+=("$INPUT (Metadata ve FastStart uygulanamadı)")
         continue
     fi
 
-    # ExifTool (opsiyonel)
+    # ExifTool (opsiyonel) - FastStart'tan sonra yazılıyor
     read -p "ExifTool metadata enjekte edilsin mi? (e/h): " USE_EXIF
     if [[ "$USE_EXIF" == "e" || "$USE_EXIF" == "E" ]]; then
         echo ">>> ExifTool metadata ekleniyor..."
@@ -555,26 +557,11 @@ for INPUT in "${VIDEOS[@]}"; do
         -Make="$MAKE" \
         -Model="$MODEL" \
         -Software="$SOFTWARE" \
-        "$TEMP" >>"$LOGFILE" 2>&1; then
+        "$META_OUT" >>"$LOGFILE" 2>&1; then
             echo "✅ BAŞARILI: ExifTool metadata eklendi"
         else
             echo "❌ BAŞARISIZ: ExifTool metadata eklenemedi!" | tee -a "$LOGFILE"
         fi
-    fi
-
-    # [3] FastStart (moov atom en başa)
-    echo
-    echo "=== [3] FastStart (MOOV Atom Optimize) ==="
-    echo ">>> FastStart uygulanıyor..."
-    if ffmpeg -i "$TEMP" -movflags faststart -c copy "$META_OUT" -y 2>>"$LOGFILE"; then
-        echo "✅ BAŞARILI: FastStart uygulandı"
-        echo "✅ Meta dosya oluşturuldu: $META_OUT"
-        CURRENT_FILE="$META_OUT"
-    else
-        echo "❌ BAŞARISIZ: FastStart uygulanamadı!" | tee -a "$LOGFILE"
-        rm -f "$TEMP"
-        FAILED_VIDEOS+=("$INPUT (FastStart uygulanamadı)")
-        continue
     fi
 
     # Metadata doğrulama

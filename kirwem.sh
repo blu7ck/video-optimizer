@@ -667,12 +667,6 @@ for INPUT in "${VIDEOS[@]}"; do
     FASTSTART_RESULT=$(check_faststart "$META_OUT")
     echo "$FASTSTART_RESULT"
 
-    # Kalite skoru hesaplama
-    echo
-    echo ">>> Kalite skoru hesaplanıyor..."
-    QUALITY_SCORE=$(calculate_quality_score "$META_OUT")
-    echo "📊 Kalite Skoru: $QUALITY_SCORE/100"
-
     # [4] Thumbnail / AI Thumbnail
     echo
     echo "=== [4] Thumbnail / AI Thumbnail ==="
@@ -807,10 +801,6 @@ for INPUT in "${VIDEOS[@]}"; do
             echo "✅ Optimized dosya oluşturuldu: $OPTIMIZED_OUT"
             FINAL_OUT="$OPTIMIZED_OUT"
             CURRENT_FILE="$OPTIMIZED_OUT"  # CURRENT_FILE'ı güncelle
-            
-            # Optimized dosya için de kalite skoru
-            OPTIMIZED_SCORE=$(calculate_quality_score "$OPTIMIZED_OUT")
-            echo "📊 Optimized Kalite Skoru: $OPTIMIZED_SCORE/100"
         else
             echo "❌ BAŞARISIZ: Bitrate optimizasyonu yapılamadı!" | tee -a "$LOGFILE"
             FINAL_OUT="$META_OUT"
@@ -828,14 +818,24 @@ for INPUT in "${VIDEOS[@]}"; do
     
     if [ -f "$FINAL_OUT" ]; then
         echo "✅ BAŞARILI: Final dosya hazır -> $FINAL_OUT"
-        if [ -n "$OPTIMIZED_SCORE" ]; then
-            PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$FINAL_OUT|$QUALITY_SCORE|$OPTIMIZED_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
+        
+        # [7] Kalite Skoru Hesaplama (En son - Final dosya için)
+        echo
+        echo "=== [7] Kalite Skoru Hesaplama ==="
+        echo ">>> Final dosya için kalite skoru hesaplanıyor..."
+        FINAL_QUALITY_SCORE=$(calculate_quality_score "$FINAL_OUT")
+        echo "📊 Final Kalite Skoru: $FINAL_QUALITY_SCORE/100"
+        
+        # Eğer optimized dosya varsa, onun skorunu da göster
+        if [ -f "$OPTIMIZED_OUT" ] && [ "$FINAL_OUT" == "$OPTIMIZED_OUT" ]; then
+            OPTIMIZED_SCORE="$FINAL_QUALITY_SCORE"
+            PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$FINAL_OUT|$FINAL_QUALITY_SCORE|$FINAL_QUALITY_SCORE|$METADATA_RESULT|$FASTSTART_RESULT")
         else
-            PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$FINAL_OUT|$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
+            PROCESSED_VIDEOS+=("$INPUT|$META_OUT|$FINAL_OUT|$FINAL_QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
         fi
     else
         echo "❌ BAŞARISIZ: Final dosya oluşturulamadı!" | tee -a "$LOGFILE"
-        PROCESSED_VIDEOS+=("$INPUT|$META_OUT||$QUALITY_SCORE||$METADATA_RESULT|$FASTSTART_RESULT")
+        PROCESSED_VIDEOS+=("$INPUT|$META_OUT||0||$METADATA_RESULT|$FASTSTART_RESULT")
     fi
 
     echo "------------------------------------------" | tee -a "$LOGFILE"

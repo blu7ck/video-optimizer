@@ -316,13 +316,13 @@ for INPUT in "${VIDEOS[@]}"; do
             fi
             ;;
         2)
-            # AI Upscale (Real-ESRGAN)
+            # AI Upscale (NCNN-Vulkan)
             echo
-            echo ">>> AI Upscale (Real-ESRGAN) kontrol ediliyor..."
+            echo ">>> AI Upscale (NCNN-Vulkan) kontrol ediliyor..."
             
-            # Real-ESRGAN kontrolü
-            if command -v realesrgan-ncnn-vulkan &>/dev/null || command -v realesrgan &>/dev/null; then
-                echo "Real-ESRGAN bulundu."
+            # NCNN-Vulkan kontrolü
+            if command -v realesrgan-ncnn-vulkan &>/dev/null; then
+                echo "✅ NCNN-Vulkan bulundu."
                 echo
                 echo "=== AI Upscale Model Seçimi ==="
                 echo "1) realesrgan-x4plus (4x upscale, önerilen)"
@@ -349,7 +349,7 @@ for INPUT in "${VIDEOS[@]}"; do
                         ;;
                 esac
                 
-                echo ">>> AI Upscale yapılıyor (Model: $MODEL_NAME)..."
+                echo ">>> AI Upscale yapılıyor (NCNN-Vulkan, Model: $MODEL_NAME)..."
                 echo "⚠️  Bu işlem uzun sürebilir (video uzunluğuna bağlı)..."
                 
                 # Real-ESRGAN video işleme için frame'leri çıkar, upscale et, birleştir
@@ -362,7 +362,7 @@ for INPUT in "${VIDEOS[@]}"; do
                 echo ">>> Frame'ler çıkarılıyor..."
                 if ffmpeg -i "$CURRENT_FILE" -qscale:v 1 "$TEMP_FRAMES/frame_%06d.jpg" -y 2>>"$LOGFILE"; then
                     # Her frame'i upscale et
-                    echo ">>> Frame'ler upscale ediliyor (bu uzun sürebilir)..."
+                    echo ">>> Frame'ler upscale ediliyor (NCNN-Vulkan ile, bu uzun sürebilir)..."
                     FRAME_COUNT=$(ls -1 "$TEMP_FRAMES"/*.jpg 2>/dev/null | wc -l)
                     CURRENT_FRAME=0
                     
@@ -372,11 +372,7 @@ for INPUT in "${VIDEOS[@]}"; do
                             FRAME_NAME=$(basename "$frame")
                             echo ">>> İşleniyor: $CURRENT_FRAME/$FRAME_COUNT"
                             
-                            if command -v realesrgan-ncnn-vulkan &>/dev/null; then
-                                realesrgan-ncnn-vulkan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
-                            elif command -v realesrgan &>/dev/null; then
-                                realesrgan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
-                            fi
+                            realesrgan-ncnn-vulkan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
                         fi
                     done
                     
@@ -389,7 +385,7 @@ for INPUT in "${VIDEOS[@]}"; do
                     -c:v libx264 -preset slow -crf 18 \
                     -c:a copy \
                     "$UPSCALED_OUT" -y 2>>"$LOGFILE"; then
-                        echo "✅ BAŞARILI: AI Upscale tamamlandı: $UPSCALED_OUT"
+                        echo "✅ BAŞARILI: AI Upscale (NCNN-Vulkan) tamamlandı: $UPSCALED_OUT"
                         CURRENT_FILE="$UPSCALED_OUT"
                     else
                         echo "❌ BAŞARISIZ: Upscaled frame'ler video'ya birleştirilemedi!" | tee -a "$LOGFILE"
@@ -402,14 +398,104 @@ for INPUT in "${VIDEOS[@]}"; do
                     echo "❌ BAŞARISIZ: Frame'ler çıkarılamadı!" | tee -a "$LOGFILE"
                 fi
             else
-                echo "⚠️  Real-ESRGAN yüklü değil!" | tee -a "$LOGFILE"
+                echo "⚠️  NCNN-Vulkan yüklü değil!" | tee -a "$LOGFILE"
+                echo "   Yüklemek için:" | tee -a "$LOGFILE"
+                echo "   - GitHub'dan indirin: https://github.com/xinntao/Real-ESRGAN/releases" | tee -a "$LOGFILE"
+                echo "   - veya: https://github.com/nihui/realesrgan-ncnn-vulkan" | tee -a "$LOGFILE"
+                echo "   Upscale atlandı, orijinal dosya kullanılacak."
+            fi
+            ;;
+        3)
+            # AI Upscale (Python Real-ESRGAN)
+            echo
+            echo ">>> AI Upscale (Python Real-ESRGAN) kontrol ediliyor..."
+            
+            # Python Real-ESRGAN kontrolü
+            if command -v realesrgan &>/dev/null; then
+                echo "✅ Python Real-ESRGAN bulundu."
+                echo
+                echo "=== AI Upscale Model Seçimi ==="
+                echo "1) realesrgan-x4plus (4x upscale, önerilen)"
+                echo "2) realesrgan-x4plus-anime (Anime için)"
+                echo "3) realesrgan-x2plus (2x upscale, hızlı)"
+                read -p "Seçiminiz (1-3): " MODEL_CHOICE
+                
+                case $MODEL_CHOICE in
+                    1)
+                        MODEL_NAME="realesrgan-x4plus"
+                        SCALE=4
+                        ;;
+                    2)
+                        MODEL_NAME="realesrgan-x4plus-anime"
+                        SCALE=4
+                        ;;
+                    3)
+                        MODEL_NAME="realesrgan-x2plus"
+                        SCALE=2
+                        ;;
+                    *)
+                        MODEL_NAME="realesrgan-x4plus"
+                        SCALE=4
+                        ;;
+                esac
+                
+                echo ">>> AI Upscale yapılıyor (Python Real-ESRGAN, Model: $MODEL_NAME)..."
+                echo "⚠️  Bu işlem çok uzun sürebilir (video uzunluğuna bağlı)..."
+                
+                # Real-ESRGAN video işleme için frame'leri çıkar, upscale et, birleştir
+                TEMP_FRAMES="temp_frames_${BASENAME}"
+                TEMP_UPSCALED_FRAMES="temp_upscaled_frames_${BASENAME}"
+                mkdir -p "$TEMP_FRAMES"
+                mkdir -p "$TEMP_UPSCALED_FRAMES"
+                
+                # Video'dan frame'leri çıkar
+                echo ">>> Frame'ler çıkarılıyor..."
+                if ffmpeg -i "$CURRENT_FILE" -qscale:v 1 "$TEMP_FRAMES/frame_%06d.jpg" -y 2>>"$LOGFILE"; then
+                    # Her frame'i upscale et
+                    echo ">>> Frame'ler upscale ediliyor (Python Real-ESRGAN ile, bu çok uzun sürebilir)..."
+                    FRAME_COUNT=$(ls -1 "$TEMP_FRAMES"/*.jpg 2>/dev/null | wc -l)
+                    CURRENT_FRAME=0
+                    
+                    for frame in "$TEMP_FRAMES"/*.jpg; do
+                        if [ -f "$frame" ]; then
+                            CURRENT_FRAME=$((CURRENT_FRAME + 1))
+                            FRAME_NAME=$(basename "$frame")
+                            echo ">>> İşleniyor: $CURRENT_FRAME/$FRAME_COUNT"
+                            
+                            realesrgan -i "$frame" -o "$TEMP_UPSCALED_FRAMES/$FRAME_NAME" -n "$MODEL_NAME" -s $SCALE 2>>"$LOGFILE"
+                        fi
+                    done
+                    
+                    # Upscaled frame'leri video'ya birleştir
+                    echo ">>> Upscaled frame'ler video'ya birleştiriliyor..."
+                    FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 "$CURRENT_FILE" 2>/dev/null)
+                    
+                    if ffmpeg -framerate "$FPS" -i "$TEMP_UPSCALED_FRAMES/frame_%06d.jpg" \
+                    -i "$CURRENT_FILE" -map 0:v -map 1:a? \
+                    -c:v libx264 -preset slow -crf 18 \
+                    -c:a copy \
+                    "$UPSCALED_OUT" -y 2>>"$LOGFILE"; then
+                        echo "✅ BAŞARILI: AI Upscale (Python Real-ESRGAN) tamamlandı: $UPSCALED_OUT"
+                        CURRENT_FILE="$UPSCALED_OUT"
+                    else
+                        echo "❌ BAŞARISIZ: Upscaled frame'ler video'ya birleştirilemedi!" | tee -a "$LOGFILE"
+                    fi
+                    
+                    # Temizlik
+                    rm -rf "$TEMP_FRAMES"
+                    rm -rf "$TEMP_UPSCALED_FRAMES"
+                else
+                    echo "❌ BAŞARISIZ: Frame'ler çıkarılamadı!" | tee -a "$LOGFILE"
+                fi
+            else
+                echo "⚠️  Python Real-ESRGAN yüklü değil!" | tee -a "$LOGFILE"
                 echo "   Yüklemek için:" | tee -a "$LOGFILE"
                 echo "   - pip install realesrgan" | tee -a "$LOGFILE"
                 echo "   - veya: https://github.com/xinntao/Real-ESRGAN" | tee -a "$LOGFILE"
                 echo "   Upscale atlandı, orijinal dosya kullanılacak."
             fi
             ;;
-        3)
+        4)
             echo "Upscale atlandı."
             ;;
         *)

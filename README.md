@@ -74,6 +74,92 @@ sudo apt install gpac
 ```
 *This tool checks if FastStart optimization is correctly applied. Optional but recommended.*
 
+##### 6. Install Vulkan Drivers (Optional - for AI Upscale with NCNN-Vulkan)
+
+**For AMD GPU:**
+```bash
+sudo apt install mesa-vulkan-drivers vulkan-tools vulkan-validationlayers
+```
+
+**For NVIDIA GPU:**
+```bash
+sudo apt install nvidia-driver-535 vulkan-tools
+```
+
+**For Intel GPU:**
+```bash
+sudo apt install intel-media-va-driver-non-free vulkan-tools
+```
+
+*Vulkan is required for NCNN-Vulkan AI upscale feature. Optional but recommended for faster upscaling.*
+
+**Verify Vulkan installation:**
+```bash
+vulkaninfo | head -20
+```
+*Should display Vulkan version information.*
+
+##### 7. Install NCNN-Vulkan (Optional - for Fast AI Upscale)
+
+**Method 1: Quick Installation (Recommended)**
+
+```bash
+# Download binary
+cd /tmp
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+
+# Extract
+unzip realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+
+# Install to system
+sudo cp realesrgan-ncnn-vulkan /usr/local/bin/
+sudo chmod +x /usr/local/bin/realesrgan-ncnn-vulkan
+
+# Copy models (optional, auto-downloads on first use)
+mkdir -p ~/.local/share/realesrgan-ncnn-vulkan/models
+cp models/* ~/.local/share/realesrgan-ncnn-vulkan/models/
+
+# Cleanup
+rm -rf /tmp/realesrgan-ncnn-vulkan* /tmp/models
+
+# Verify installation
+realesrgan-ncnn-vulkan -h
+```
+
+**Method 2: Alternative Source**
+
+```bash
+# Download from nihui repository
+cd /tmp
+wget https://github.com/nihui/realesrgan-ncnn-vulkan/releases/download/20220424/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+# Follow same steps as Method 1
+```
+
+*NCNN-Vulkan provides 10-50x faster AI upscaling compared to Python Real-ESRGAN. Highly recommended for video processing.*
+
+**Verify installation:**
+```bash
+which realesrgan-ncnn-vulkan
+realesrgan-ncnn-vulkan -h
+```
+
+##### 8. Install Python Real-ESRGAN (Optional - Alternative AI Upscale)
+
+**If you prefer Python-based upscaling (slower but easier installation):**
+
+```bash
+# Activate virtual environment (if using)
+source venv_ai_thumb/bin/activate
+
+# Install Real-ESRGAN
+pip install realesrgan
+
+# Verify installation
+realesrgan -h
+```
+
+*Python Real-ESRGAN is easier to install but much slower than NCNN-Vulkan. Use NCNN-Vulkan if possible.*
+
 #### Installation Verification
 
 Verify all tools are installed:
@@ -87,6 +173,15 @@ python3 --version
 
 # Check Pip
 pip3 --version
+
+# Check Vulkan (if installed)
+vulkaninfo 2>&1 | head -5
+
+# Check NCNN-Vulkan (if installed)
+which realesrgan-ncnn-vulkan && realesrgan-ncnn-vulkan -h 2>&1 | head -3
+
+# Check Python Real-ESRGAN (if installed)
+which realesrgan && realesrgan -h 2>&1 | head -3
 ```
 
 Each command should display a version number. If you get "command not found" errors, repeat the installation steps above.
@@ -331,6 +426,95 @@ You should see a version number.
    sudo apt install python3-all
    ```
 
+#### "NCNN-Vulkan not found" or "realesrgan-ncnn-vulkan: command not found"
+
+NCNN-Vulkan is not installed or not in PATH. Follow these steps:
+
+1. **Check if it's installed:**
+   ```bash
+   which realesrgan-ncnn-vulkan
+   ```
+
+2. **If not found, install it:**
+   ```bash
+   cd /tmp
+   wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+   unzip realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+   sudo cp realesrgan-ncnn-vulkan /usr/local/bin/
+   sudo chmod +x /usr/local/bin/realesrgan-ncnn-vulkan
+   ```
+
+3. **Verify installation:**
+   ```bash
+   realesrgan-ncnn-vulkan -h
+   ```
+
+4. **If still not found, check PATH:**
+   ```bash
+   echo $PATH
+   # Make sure /usr/local/bin is in PATH
+   ```
+
+#### "Vulkan driver not found" or Vulkan errors
+
+Vulkan drivers are not installed. Install based on your GPU:
+
+**For AMD GPU:**
+```bash
+sudo apt install mesa-vulkan-drivers vulkan-tools
+```
+
+**For NVIDIA GPU:**
+```bash
+sudo apt install nvidia-driver-535 vulkan-tools
+```
+
+**For Intel GPU:**
+```bash
+sudo apt install intel-media-va-driver-non-free vulkan-tools
+```
+
+**Verify Vulkan:**
+```bash
+vulkaninfo | head -20
+```
+
+#### "Python Real-ESRGAN not found" or "realesrgan: command not found"
+
+Python Real-ESRGAN is not installed. Install it:
+
+```bash
+# Activate virtual environment (if using)
+source venv_ai_thumb/bin/activate
+
+# Install Real-ESRGAN
+pip install realesrgan
+
+# Verify
+realesrgan -h
+```
+
+**Note:** If you have both NCNN-Vulkan and Python Real-ESRGAN installed, the script will use NCNN-Vulkan (faster). Python Real-ESRGAN is a fallback option.
+
+#### AI Upscale is very slow
+
+If AI upscale is taking too long:
+
+1. **Check which tool is being used:**
+   - NCNN-Vulkan: Very fast (10-50x faster)
+   - Python Real-ESRGAN: Very slow (especially on CPU)
+
+2. **If using Python Real-ESRGAN, switch to NCNN-Vulkan:**
+   - Install NCNN-Vulkan (see installation steps above)
+   - Select option 2 (NCNN-Vulkan) instead of option 3 (Python Real-ESRGAN) in the script
+
+3. **Check GPU support:**
+   ```bash
+   vulkaninfo | grep -i device
+   ```
+   - GPU acceleration is required for fast upscaling
+   - CPU-only mode is extremely slow
+
 ---
 
 <a name="türkçe"></a>
@@ -401,6 +585,92 @@ sudo apt install gpac
 ```
 *Bu araç FastStart optimizasyonunun doğru uygulanıp uygulanmadığını kontrol eder. Opsiyonel ama önerilir.*
 
+#### 6. Vulkan Driver Kurulumu (AI Upscale - NCNN-Vulkan İçin - OPSİYONEL)
+
+**AMD GPU için:**
+```bash
+sudo apt install mesa-vulkan-drivers vulkan-tools vulkan-validationlayers
+```
+
+**NVIDIA GPU için:**
+```bash
+sudo apt install nvidia-driver-535 vulkan-tools
+```
+
+**Intel GPU için:**
+```bash
+sudo apt install intel-media-va-driver-non-free vulkan-tools
+```
+
+*Vulkan, NCNN-Vulkan AI upscale özelliği için gereklidir. Opsiyonel ama hızlı upscale için önerilir.*
+
+**Vulkan kurulumunu kontrol edin:**
+```bash
+vulkaninfo | head -20
+```
+*Vulkan versiyon bilgisi görünmelidir.*
+
+#### 7. NCNN-Vulkan Kurulumu (Hızlı AI Upscale İçin - OPSİYONEL)
+
+**Yöntem 1: Hızlı Kurulum (Önerilen)**
+
+```bash
+# Binary indir
+cd /tmp
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+
+# ZIP'i aç
+unzip realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+
+# Sisteme kur
+sudo cp realesrgan-ncnn-vulkan /usr/local/bin/
+sudo chmod +x /usr/local/bin/realesrgan-ncnn-vulkan
+
+# Model dosyalarını kopyala (opsiyonel, ilk kullanımda otomatik indirilir)
+mkdir -p ~/.local/share/realesrgan-ncnn-vulkan/models
+cp models/* ~/.local/share/realesrgan-ncnn-vulkan/models/
+
+# Temizlik
+rm -rf /tmp/realesrgan-ncnn-vulkan* /tmp/models
+
+# Kurulumu kontrol et
+realesrgan-ncnn-vulkan -h
+```
+
+**Yöntem 2: Alternatif Kaynak**
+
+```bash
+# nihui repository'den indir
+cd /tmp
+wget https://github.com/nihui/realesrgan-ncnn-vulkan/releases/download/20220424/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+# Yöntem 1'deki aynı adımları takip edin
+```
+
+*NCNN-Vulkan, Python Real-ESRGAN'a göre 10-50x daha hızlı AI upscale sağlar. Video işleme için kesinlikle önerilir.*
+
+**Kurulumu kontrol edin:**
+```bash
+which realesrgan-ncnn-vulkan
+realesrgan-ncnn-vulkan -h
+```
+
+#### 8. Python Real-ESRGAN Kurulumu (Alternatif AI Upscale - OPSİYONEL)
+
+**Eğer Python tabanlı upscale tercih ediyorsanız (daha yavaş ama kurulumu kolay):**
+
+```bash
+# Virtual environment'ı aktif et (kullanıyorsanız)
+source venv_ai_thumb/bin/activate
+
+# Real-ESRGAN'ı yükle
+pip install realesrgan
+
+# Kurulumu kontrol et
+realesrgan -h
+```
+
+*Python Real-ESRGAN kurulumu daha kolaydır ama NCNN-Vulkan'dan çok daha yavaştır. Mümkünse NCNN-Vulkan kullanın.*
+
 #### Kurulum Kontrolü
 
 Tüm araçların yüklü olduğunu kontrol edin:
@@ -414,6 +684,15 @@ python3 --version
 
 # Pip kontrolü
 pip3 --version
+
+# Vulkan kontrolü (yüklüyse)
+vulkaninfo 2>&1 | head -5
+
+# NCNN-Vulkan kontrolü (yüklüyse)
+which realesrgan-ncnn-vulkan && realesrgan-ncnn-vulkan -h 2>&1 | head -3
+
+# Python Real-ESRGAN kontrolü (yüklüyse)
+which realesrgan && realesrgan -h 2>&1 | head -3
 ```
 
 Her komut bir versiyon numarası göstermelidir. Eğer "command not found" hatası alırsanız, yukarıdaki kurulum adımlarını tekrar edin.
@@ -667,6 +946,95 @@ Bir versiyon numarası görünmelidir.
    ```bash
    sudo apt install python3-all
    ```
+
+### "NCNN-Vulkan bulunamadı" veya "realesrgan-ncnn-vulkan: command not found"
+
+NCNN-Vulkan yüklü değil veya PATH'te değil. Şu adımları izleyin:
+
+1. **Yüklü mü kontrol edin:**
+   ```bash
+   which realesrgan-ncnn-vulkan
+   ```
+
+2. **Bulunamazsa, yükleyin:**
+   ```bash
+   cd /tmp
+   wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+   unzip realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+   sudo cp realesrgan-ncnn-vulkan /usr/local/bin/
+   sudo chmod +x /usr/local/bin/realesrgan-ncnn-vulkan
+   ```
+
+3. **Kurulumu kontrol edin:**
+   ```bash
+   realesrgan-ncnn-vulkan -h
+   ```
+
+4. **Hala bulunamazsa, PATH'i kontrol edin:**
+   ```bash
+   echo $PATH
+   # /usr/local/bin PATH'te olmalı
+   ```
+
+### "Vulkan driver bulunamadı" veya Vulkan hataları
+
+Vulkan driver'ları yüklü değil. GPU'nuz için yükleyin:
+
+**AMD GPU için:**
+```bash
+sudo apt install mesa-vulkan-drivers vulkan-tools
+```
+
+**NVIDIA GPU için:**
+```bash
+sudo apt install nvidia-driver-535 vulkan-tools
+```
+
+**Intel GPU için:**
+```bash
+sudo apt install intel-media-va-driver-non-free vulkan-tools
+```
+
+**Vulkan'ı kontrol edin:**
+```bash
+vulkaninfo | head -20
+```
+
+### "Python Real-ESRGAN bulunamadı" veya "realesrgan: command not found"
+
+Python Real-ESRGAN yüklü değil. Yükleyin:
+
+```bash
+# Virtual environment'ı aktif edin (kullanıyorsanız)
+source venv_ai_thumb/bin/activate
+
+# Real-ESRGAN'ı yükleyin
+pip install realesrgan
+
+# Kontrol edin
+realesrgan -h
+```
+
+**Not:** Hem NCNN-Vulkan hem de Python Real-ESRGAN yüklüyse, script NCNN-Vulkan'ı kullanır (daha hızlı). Python Real-ESRGAN yedek seçenektir.
+
+### AI Upscale çok yavaş
+
+AI upscale çok uzun sürüyorsa:
+
+1. **Hangi aracın kullanıldığını kontrol edin:**
+   - NCNN-Vulkan: Çok hızlı (10-50x daha hızlı)
+   - Python Real-ESRGAN: Çok yavaş (özellikle CPU'da)
+
+2. **Python Real-ESRGAN kullanıyorsanız, NCNN-Vulkan'a geçin:**
+   - NCNN-Vulkan'ı yükleyin (yukarıdaki kurulum adımlarına bakın)
+   - Script'te seçenek 3 (Python Real-ESRGAN) yerine seçenek 2 (NCNN-Vulkan) seçin
+
+3. **GPU desteğini kontrol edin:**
+   ```bash
+   vulkaninfo | grep -i device
+   ```
+   - Hızlı upscale için GPU hızlandırması gereklidir
+   - Sadece CPU modu çok yavaştır
 
 ## 📝 Örnek Kullanım Senaryosu
 

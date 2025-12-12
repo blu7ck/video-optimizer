@@ -99,7 +99,9 @@ vulkaninfo | head -20
 ```
 *Should display Vulkan version information.*
 
-##### 7. Install NCNN-Vulkan (Optional - for Fast AI Upscale)
+##### 7. Install NCNN-Vulkan (Optional - for Fast AI Upscale) ⚠️ [UNDER DEVELOPMENT]
+
+**⚠️ Note:** AI Upscale features (NCNN-Vulkan and Python Real-ESRGAN) are currently under active development. Some issues may occur (black screen, low file size). Use with caution or prefer FFmpeg upscale for now.
 
 **Method 1: Quick Installation (Recommended)**
 
@@ -143,7 +145,9 @@ which realesrgan-ncnn-vulkan
 realesrgan-ncnn-vulkan -h
 ```
 
-##### 8. Install Python Real-ESRGAN (Optional - Alternative AI Upscale)
+##### 8. Install Python Real-ESRGAN (Optional - Alternative AI Upscale) ⚠️ [UNDER DEVELOPMENT]
+
+**⚠️ Note:** AI Upscale features (NCNN-Vulkan and Python Real-ESRGAN) are currently under active development. Some issues may occur (black screen, low file size). Use with caution or prefer FFmpeg upscale for now.
 
 **If you prefer Python-based upscaling (slower but easier installation):**
 
@@ -610,7 +614,9 @@ vulkaninfo | head -20
 ```
 *Vulkan versiyon bilgisi görünmelidir.*
 
-#### 7. NCNN-Vulkan Kurulumu (Hızlı AI Upscale İçin - OPSİYONEL)
+#### 7. NCNN-Vulkan Kurulumu (Hızlı AI Upscale İçin - OPSİYONEL) ⚠️ [GELİŞTİRİLİYOR]
+
+**⚠️ Not:** AI Upscale özellikleri (NCNN-Vulkan ve Python Real-ESRGAN) şu anda aktif geliştirme aşamasındadır. Bazı sorunlar yaşanabilir (siyah ekran, düşük dosya boyutu). Dikkatli kullanın veya şimdilik FFmpeg upscale'ı tercih edin.
 
 **Yöntem 1: Hızlı Kurulum (Önerilen)**
 
@@ -654,7 +660,9 @@ which realesrgan-ncnn-vulkan
 realesrgan-ncnn-vulkan -h
 ```
 
-#### 8. Python Real-ESRGAN Kurulumu (Alternatif AI Upscale - OPSİYONEL)
+#### 8. Python Real-ESRGAN Kurulumu (Alternatif AI Upscale - OPSİYONEL) ⚠️ [GELİŞTİRİLİYOR]
+
+**⚠️ Not:** AI Upscale özellikleri (NCNN-Vulkan ve Python Real-ESRGAN) şu anda aktif geliştirme aşamasındadır. Bazı sorunlar yaşanabilir (siyah ekran, düşük dosya boyutu). Dikkatli kullanın veya şimdilik FFmpeg upscale'ı tercih edin.
 
 **Eğer Python tabanlı upscale tercih ediyorsanız (daha yavaş ama kurulumu kolay):**
 
